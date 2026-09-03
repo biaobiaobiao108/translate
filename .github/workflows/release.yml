@@ -6,6 +6,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
+
 jobs:
   build:
     name: Build - ${{ matrix.target }}
@@ -21,7 +24,7 @@ jobs:
             binary_source: translate.exe
             use_cross: false
 
-          # 2. macOS (Apple SILicon M 谯片 aarch64)
+          # 2. macOS (Apple Silicon M 芯片 aarch64)
           - os: macos-latest
             target: aarch64-apple-darwin
             artifact_name: translate-aarch64-apple-darwin
@@ -80,6 +83,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
