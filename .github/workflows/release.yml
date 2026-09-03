@@ -14,51 +14,38 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows (x86_64)
+          # 1. Windows (x86_64 64位)
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact_name: translate-x86_64-pc-windows-msvc.zip
             binary_name: translate.exe
             use_cross: false
 
-          # macOS (Apple Silicon M1/M2/M3/M4)
+          # 2. macOS (Apple SILicon M 芯片 aarch64)
           - os: macos-latest
             target: aarch64-apple-darwin
             artifact_name: translate-aarch64-apple-darwin.tar.gz
             binary_name: translate
             use_cross: false
 
-          # macOS (Intel x86_64)
-          - os: macos-13
-            target: x86_64-apple-darwin
-            artifact_name: translate-x86_64-apple-darwin.tar.gz
-            binary_name: translate
-            use_cross: false
-
-          # Linux (Debian / Ubuntu x86_64 glibc)
+          # 3. Debian / Ubuntu (x86_64 64位)
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact_name: translate-x86_64-unknown-linux-gnu.tar.gz
             binary_name: translate
             use_cross: false
 
-          # Linux (ARM64 / aarch64)
+          # 4. Debian / Ubuntu (ARM64 / aarch64)
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            artifact_name: translate-aarch64-unknown-linux-gnu.tar.gz
-            binary_name: translate
-            use_cross: true
-
-          # Linux (Musl 纯静态单文件 - 兼容任意 Linux 发行版与 Alpine)
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-musl
-            artifact_name: translate-x86_64-unknown-linux-musl.tar.gz 
+            artifact_name: translate-aarch64-unknown-linux-gnu.tar.gz 
             binary_name: translate
             use_cross: true
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -93,7 +80,7 @@ jobs:
         shell: bash
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@64
         with:
           name: ${{ matrix.target }}
           path: ${{ matrix.artifact_name }}
@@ -105,16 +92,17 @@ jobs:
     if: startswith(github.ref, 'refs/tags/')
     steps:
       - name: Checkout repository
-        uses: actions/checkout@64
+        uses: actions/checkout@v4
+
 
       - name: Download all artifacts
-        uses: actions/download-artifact@64
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
 
       - name: Prepare release files
         run: |
-          mkdir -p  release_dist
+          mkdir -p release_dist
           find artifacts -type f -name "translate-*" -exec cp {} release_dist/ \;
           ls -la release_dist
 
@@ -123,5 +111,5 @@ jobs:
         with:
           files: release_dist/*
           draft: false
-          prerelease: false
+          prelease: false
           generate_release_notes: true
