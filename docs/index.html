@@ -191,24 +191,62 @@
       border-radius: 16px; overflow-x: auto; -webkit-overflow-scrolling: touch;
       box-shadow: 0 20px 40px rgba(0,0,0,0.3);
     }
-    table { width: 100%; min-width: 640px; border-collapse: collapse; text-align: left; }
+    table { width: 100%; min-width: 880px; border-collapse: collapse; text-align: left; }
     th {
-      background: #16161e; color: var(--fg); padding: 16px 24px;
+      background: #16161e; color: var(--fg); padding: 16px 20px;
       font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;
       font-weight: 700; border-bottom: 1px solid var(--surface-border);
+      white-space: nowrap;
     }
-    td { padding: 18px 24px; border-bottom: 1px solid var(--surface-border); font-size: 0.95rem; }
+    td {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--surface-border);
+      font-size: 0.92rem;
+      vertical-align: middle;
+    }
     tr:last-child td { border-bottom: none; }
+    td:nth-child(1),
+    td:nth-child(2),
+    td:nth-child(3) {
+      white-space: nowrap;
+    }
     .badge-direct {
-      background: rgba(158, 206, 106, 0.15); color: var(--green);
-      padding: 4px 10px; border-radius: 999px; font-size: 0.8rem;
-      font-weight: 600; border: 1px solid rgba(158, 206, 106, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(158, 206, 106, 0.12);
+      color: var(--green);
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1px solid rgba(158, 206, 106, 0.3);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .badge-direct::before {
+      content: "";
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--green);
+      box-shadow: 0 0 6px rgba(158, 206, 106, 0.6);
     }
     .dl-link {
       color: var(--blue); text-decoration: none; font-family: var(--font-mono);
       font-weight: 600; display: inline-flex; align-items: center; gap: 6px;
     }
     .dl-link:hover { color: var(--cyan); text-decoration: underline; }
+    td code {
+      font-family: var(--font-mono);
+      background: #16161e;
+      border: 1px solid var(--surface-border);
+      padding: 3px 8px;
+      border-radius: 6px;
+      color: var(--cyan);
+      font-size: 0.85rem;
+    }
     
     footer { border-top: 1px solid var(--surface-border); padding: 40px 0; text-align: center; color: var(--fg-sub); font-size: 0.9rem; }
     footer a { color: var(--fg); text-decoration: none; }
