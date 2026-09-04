@@ -1,16 +1,16 @@
 use colored::*;
 use crate::api::dict::{QueryOutput, WordDetail};
 
-// Tokyo Night TrueColor RGB Constants
-const TN_FG: (u8, u8, u8) = (192, 202, 245);         // Main text
-const TN_BLUE: (u8, u8, u8) = (122, 162, 247);       // Primary accent / Header
-const TN_CYAN: (u8, u8, u8) = (125, 207, 255);       // Secondary accent / Phonetics
-const TN_GREEN: (u8, u8, u8) = (158, 206, 106);      // Definitions section header
-const TN_MAGENTA: (u8, u8, u8) = (187, 154, 247);    // Examples header
-const TN_ORANGE: (u8, u8, u8) = (255, 158, 100);     // POS tags (n., v.)
-const TN_YELLOW: (u8, u8, u8) = (224, 175, 104);     // Example translation (warm readable yellow)
-const TN_COMMENT: (u8, u8, u8) = (115, 125, 160);    // Dividers / Subdued text (elevated contrast)
-const TN_BORDER: (u8, u8, u8) = (90, 100, 138);      // Box border / Dividers
+// Tokyo Night TrueColor RGB Constants (aligned with docs/index.html)
+const TN_FG: (u8, u8, u8) = (192, 202, 245);         // #c0caf5 Main text
+const TN_FG_SUB: (u8, u8, u8) = (120, 124, 153);     // #787c99 Subdued text / Example translation
+const TN_BLUE: (u8, u8, u8) = (122, 162, 247);       // #7aa2f7 Accent / Header text / English example
+const TN_CYAN: (u8, u8, u8) = (125, 207, 255);       // #7dcfff Phonetics / Numbers
+const TN_GREEN: (u8, u8, u8) = (158, 206, 106);      // #9ece6a Definitions header / Translated text
+const TN_MAGENTA: (u8, u8, u8) = (187, 154, 247);    // #bb9af7 Examples header / Badge text
+const TN_ORANGE: (u8, u8, u8) = (255, 158, 100);     // #ff9e64 POS tags (n., v.)
+const TN_SELECTION: (u8, u8, u8) = (40, 52, 73);     // #283449 Badge background
+const TN_BORDER: (u8, u8, u8) = (65, 72, 104);       // #414868 Divider line
 
 pub fn render_cli_output(output: &QueryOutput) {
     match output {
@@ -21,28 +21,37 @@ pub fn render_cli_output(output: &QueryOutput) {
     }
 }
 
+fn format_phonetic(label: &str, raw: &str) -> String {
+    let clean = raw.trim_matches(|c| c == '/' || c == '[' || c == ']' || c == ' ');
+    format!("{} [{}]", label, clean)
+        .truecolor(TN_CYAN.0, TN_CYAN.1, TN_CYAN.2)
+        .bold()
+        .to_string()
+}
+
 fn render_word_card(detail: &WordDetail) {
     println!();
-    // 词条大标题 (Tokyo Night Blue + Bold, 无背景色)
-    let title = format!("  {}  ", detail.word)
+    // 词条深色胶囊徽章 (Tokyo Night Blue + Bold + Background #283449)
+    let badge = format!("  {}  ", detail.word)
         .bold()
-        .truecolor(TN_BLUE.0, TN_BLUE.1, TN_BLUE.2);
-    print!("{}", title);
+        .truecolor(TN_BLUE.0, TN_BLUE.1, TN_BLUE.2)
+        .on_truecolor(TN_SELECTION.0, TN_SELECTION.1, TN_SELECTION.2);
+    print!(" {}", badge);
 
-    // 音标部分 (Tokyo Night Cyan)
+    // 音标部分 (Tokyo Night Cyan，同行紧随徽章)
     let mut phonetics = Vec::new();
     if let Some(ref us) = detail.phonetic_us {
-        phonetics.push(format!("美 {}", us).truecolor(TN_CYAN.0, TN_CYAN.1, TN_CYAN.2).to_string());
+        phonetics.push(format_phonetic("美", us));
     }
     if let Some(ref uk) = detail.phonetic_uk {
-        phonetics.push(format!("英 {}", uk).truecolor(TN_CYAN.0, TN_CYAN.1, TN_CYAN.2).to_string());
+        phonetics.push(format_phonetic("英", uk));
     }
     if !phonetics.is_empty() {
         print!("   {}", phonetics.join("   "));
     }
-    println!("\n");
+    println!();
 
-    // 分割线
+    // 分割线 (#414868)
     let divider = "─".repeat(58).truecolor(TN_BORDER.0, TN_BORDER.1, TN_BORDER.2);
     println!("{}", divider);
 
@@ -56,24 +65,31 @@ fn render_word_card(detail: &WordDetail) {
         );
         for def in &detail.definitions {
             let pos_tag = if !def.pos.is_empty() {
-                format!("{:>6}", def.pos)
+                let formatted_pos = if def.pos.ends_with('.') {
+                    def.pos.clone()
+                } else {
+                    format!("{}.", def.pos)
+                };
+                format!("{:>6}", formatted_pos)
                     .bold()
                     .truecolor(TN_ORANGE.0, TN_ORANGE.1, TN_ORANGE.2)
             } else {
                 "      ".normal()
             };
-            let meanings_str = def.meanings.join("； ");
+            let meanings_str = def.meanings.join("；");
             println!(
                 "  {}  {}",
                 pos_tag,
                 meanings_str.truecolor(TN_FG.0, TN_FG.1, TN_FG.2)
             );
         }
-        println!();
     }
 
     // 双语例句
     if !detail.examples.is_empty() {
+        if !detail.definitions.is_empty() {
+            println!();
+        }
         println!(
             "{}",
             " 【双语例句】"
@@ -81,20 +97,17 @@ fn render_word_card(detail: &WordDetail) {
                 .truecolor(TN_MAGENTA.0, TN_MAGENTA.1, TN_MAGENTA.2)
         );
         for (i, eg) in detail.examples.iter().enumerate() {
+            let num = format!("{}.", i + 1);
             println!(
-                "  {}. {}",
-                (i + 1)
-                    .to_string()
-                    .bold()
-                    .truecolor(TN_CYAN.0, TN_CYAN.1, TN_CYAN.2),
-                eg.orig.truecolor(TN_FG.0, TN_FG.1, TN_FG.2)
+                "  {} {}",
+                num.bold().truecolor(TN_BLUE.0, TN_BLUE.1, TN_BLUE.2),
+                eg.orig.truecolor(TN_BLUE.0, TN_BLUE.1, TN_BLUE.2)
             );
             println!(
                 "     {}",
-                eg.trans.truecolor(TN_YELLOW.0, TN_YELLOW.1, TN_YELLOW.2)
+                eg.trans.truecolor(TN_FG_SUB.0, TN_FG_SUB.1, TN_FG_SUB.2)
             );
         }
-        println!();
     }
 
     println!("{}", divider);
@@ -103,31 +116,24 @@ fn render_word_card(detail: &WordDetail) {
 
 fn render_sentence_card(original: &str, translated: &str, detected_lang: &str, target_lang: &str) {
     println!();
-    let lang_badge = format!("[{} -> {}]", detected_lang.to_uppercase(), target_lang.to_uppercase())
+    // 胶囊徽章：[EN -> ZH] Google 翻译，背景色 #283449，文字加粗
+    let badge = format!("  [{} -> {}] Google 翻译  ", detected_lang.to_uppercase(), target_lang.to_uppercase())
         .bold()
-        .truecolor(TN_BLUE.0, TN_BLUE.1, TN_BLUE.2);
-    let engine_label = "Google 翻译".bold().truecolor(TN_CYAN.0, TN_CYAN.1, TN_CYAN.2);
-    println!("  {}  {}", lang_badge, engine_label);
+        .truecolor(TN_MAGENTA.0, TN_MAGENTA.1, TN_MAGENTA.2)
+        .on_truecolor(TN_SELECTION.0, TN_SELECTION.1, TN_SELECTION.2);
+    println!(" {}", badge);
 
     let divider = "─".repeat(58).truecolor(TN_BORDER.0, TN_BORDER.1, TN_BORDER.2);
     println!("{}", divider);
 
-    println!(
-        "{}",
-        " 原文:".bold().truecolor(TN_COMMENT.0, TN_COMMENT.1, TN_COMMENT.2)
-    );
     for line in original.lines() {
-        println!("   {}", line.truecolor(TN_FG.0, TN_FG.1, TN_FG.2));
+        println!("  {}", line.truecolor(TN_FG.0, TN_FG.1, TN_FG.2));
     }
     println!();
 
-    println!(
-        "{}",
-        " 译文:".bold().truecolor(TN_GREEN.0, TN_GREEN.1, TN_GREEN.2)
-    );
     for line in translated.lines() {
         println!(
-            "   {}",
+            "  {}",
             line.bold().truecolor(TN_GREEN.0, TN_GREEN.1, TN_GREEN.2)
         );
     }

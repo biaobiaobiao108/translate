@@ -149,46 +149,58 @@ fn render_result_view(f: &mut Frame, app: &App, area: Rect) {
         Some(QueryOutput::Dict(detail)) => {
             let mut lines = Vec::new();
 
-            // 单词徽章与音标 (无背景色)
+            // 词条胶囊徽章与音标 (对齐 HTML: 背景 #283449, 文字 #7aa2f7 加粗)
             let mut word_spans = vec![
-                Span::styled(format!("  {}  ", detail.word), Style::default().fg(BLUE).add_modifier(Modifier::BOLD)),
-                Span::raw("  "),
+                Span::styled(
+                    format!("  {}  ", detail.word),
+                    Style::default().fg(BLUE).bg(SELECTION).add_modifier(Modifier::BOLD),
+                ),
+                Span::raw("   "),
             ];
             if let Some(ref us) = detail.phonetic_us {
-                word_spans.push(Span::styled(format!("美 {}  ", us), Style::default().fg(CYAN)));
+                let clean = us.trim_matches(|c| c == '/' || c == '[' || c == ']' || c == ' ');
+                word_spans.push(Span::styled(format!("美 [{}]   ", clean), Style::default().fg(CYAN).add_modifier(Modifier::BOLD)));
             }
             if let Some(ref uk) = detail.phonetic_uk {
-                word_spans.push(Span::styled(format!("英 {}", uk), Style::default().fg(CYAN)));
+                let clean = uk.trim_matches(|c| c == '/' || c == '[' || c == ']' || c == ' ');
+                word_spans.push(Span::styled(format!("英 [{}]", clean), Style::default().fg(CYAN).add_modifier(Modifier::BOLD)));
             }
             lines.push(Line::from(word_spans));
             lines.push(Line::from(""));
 
             // 词典释义
             if !detail.definitions.is_empty() {
-                lines.push(Line::from(Span::styled("【 词性释义 】", Style::default().fg(GREEN).add_modifier(Modifier::BOLD))));
+                lines.push(Line::from(Span::styled(" 【词典释义】", Style::default().fg(GREEN).add_modifier(Modifier::BOLD))));
                 for def in &detail.definitions {
-                    let pos_span = if !def.pos.is_empty() {
-                        Span::styled(format!("  {:>5} ", def.pos), Style::default().fg(ORANGE).add_modifier(Modifier::BOLD))
+                    let formatted_pos = if def.pos.ends_with('.') {
+                        def.pos.clone()
                     } else {
-                        Span::styled("        ", Style::default())
+                        format!("{}.", def.pos)
                     };
-                    let meanings_span = Span::styled(def.meanings.join("； "), Style::default().fg(FG));
+                    let pos_span = if !def.pos.is_empty() {
+                        Span::styled(format!("    {:>5}  ", formatted_pos), Style::default().fg(ORANGE).add_modifier(Modifier::BOLD))
+                    } else {
+                        Span::styled("           ", Style::default())
+                    };
+                    let meanings_span = Span::styled(def.meanings.join("；"), Style::default().fg(FG));
                     lines.push(Line::from(vec![pos_span, meanings_span]));
                 }
-                lines.push(Line::from(""));
             }
 
-            // 双语例句
+            // 双语例句 (对齐 HTML: 英文 #7aa2f7 蓝色, 中文 #787c99 优雅灰)
             if !detail.examples.is_empty() {
-                lines.push(Line::from(Span::styled("【 双语权威例句 】", Style::default().fg(MAGENTA).add_modifier(Modifier::BOLD))));
+                if !detail.definitions.is_empty() {
+                    lines.push(Line::from(""));
+                }
+                lines.push(Line::from(Span::styled(" 【双语例句】", Style::default().fg(MAGENTA).add_modifier(Modifier::BOLD))));
                 for (i, eg) in detail.examples.iter().enumerate() {
                     lines.push(Line::from(vec![
-                        Span::styled(format!("  {}. ", i + 1), Style::default().fg(CYAN)),
-                        Span::styled(&eg.orig, Style::default().fg(FG)),
+                        Span::styled(format!("  {}. ", i + 1), Style::default().fg(BLUE).add_modifier(Modifier::BOLD)),
+                        Span::styled(&eg.orig, Style::default().fg(BLUE)),
                     ]));
                     lines.push(Line::from(vec![
                         Span::raw("     "),
-                        Span::styled(&eg.trans, Style::default().fg(YELLOW)),
+                        Span::styled(&eg.trans, Style::default().fg(COMMENT)),
                     ]));
                 }
             }
@@ -201,14 +213,16 @@ fn render_result_view(f: &mut Frame, app: &App, area: Rect) {
         }
         Some(QueryOutput::Sentence { original: _, translated, detected_lang, target_lang }) => {
             let mut lines = Vec::new();
+            // 对齐 HTML: [EN -> ZH] Google 翻译 胶囊标签 (背景 #283449, 文字 #bb9af7)
             lines.push(Line::from(vec![
-                Span::styled(format!(" [{} -> {}] ", detected_lang.to_uppercase(), target_lang.to_uppercase()), Style::default().fg(MAGENTA).add_modifier(Modifier::BOLD)),
-                Span::raw("  "),
-                Span::styled("Google 翻译", Style::default().fg(BLUE).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    format!("  [{} -> {}] Google 翻译  ", detected_lang.to_uppercase(), target_lang.to_uppercase()),
+                    Style::default().fg(MAGENTA).bg(SELECTION).add_modifier(Modifier::BOLD),
+                ),
             ]));
             lines.push(Line::from(""));
 
-            lines.push(Line::from(Span::styled("译文内容：", Style::default().fg(GREEN).add_modifier(Modifier::BOLD))));
+            // 对齐 HTML: 纯粹高亮绿色输出译文，去除冗余标签
             for line in translated.lines() {
                 lines.push(Line::from(Span::styled(format!("  {}", line), Style::default().fg(GREEN).add_modifier(Modifier::BOLD))));
             }
@@ -220,10 +234,39 @@ fn render_result_view(f: &mut Frame, app: &App, area: Rect) {
             f.render_widget(paragraph, area);
         }
         None => {
-            let empty_text = Paragraph::new("\n\n  💡 在左栏输入内容并按下 Enter 即在此显示译文。\n\n  • 左右等宽双栏对照，视野开阔不受单行限制\n  • 单词优先输出详细词典、音标和权威例句\n  • 句子智能提供 Google 翻译\n  • 按 Tab 切换栏目，按 h 键查看生词与历史")
-                .style(Style::default().fg(COMMENT))
-                .block(block);
-            f.render_widget(empty_text, area);
+            // 对齐 HTML 设计语言的精致 Tokyo Night 欢迎指南卡片
+            let mut lines = Vec::new();
+            lines.push(Line::from(""));
+            lines.push(Line::from(vec![
+                Span::styled("  🚀 Tokyo Night 双引擎极速翻译  ", Style::default().fg(CYAN).bg(SELECTION).add_modifier(Modifier::BOLD)),
+            ]));
+            lines.push(Line::from(""));
+            lines.push(Line::from(Span::styled("  在左栏输入要查询的内容，按 Enter 即刻在此呈现：", Style::default().fg(FG))));
+            lines.push(Line::from(""));
+            lines.push(Line::from(vec![
+                Span::styled("  • ⚡ 单词智能精查: ", Style::default().fg(YELLOW).add_modifier(Modifier::BOLD)),
+                Span::styled("英美权威双音标、词性精解、双语例句", Style::default().fg(COMMENT)),
+            ]));
+            lines.push(Line::from(vec![
+                Span::styled("  • 🌐 长句流畅互译: ", Style::default().fg(GREEN).add_modifier(Modifier::BOLD)),
+                Span::styled("Google 翻译中英精准互译，支持大段长文", Style::default().fg(COMMENT)),
+            ]));
+            lines.push(Line::from(vec![
+                Span::styled("  • ⌨️ 极致双模式:   ", Style::default().fg(BLUE).add_modifier(Modifier::BOLD)),
+                Span::styled("Normal / Insert 无缝切换，Vim 键位平滑滚动", Style::default().fg(COMMENT)),
+            ]));
+            lines.push(Line::from(vec![
+                Span::styled("  • ⭐ 生词与历史:   ", Style::default().fg(MAGENTA).add_modifier(Modifier::BOLD)),
+                Span::styled("随时按 h 呼出生词抽屉，一键收藏与重查", Style::default().fg(COMMENT)),
+            ]));
+            lines.push(Line::from(""));
+            lines.push(Line::from(vec![
+                Span::styled("  💡 常用提示: ", Style::default().fg(ORANGE).add_modifier(Modifier::BOLD)),
+                Span::styled("i 开始输入 | Esc 导航 | Tab 切栏 | y 复制译文 | q 退出", Style::default().fg(COMMENT)),
+            ]));
+
+            let paragraph = Paragraph::new(lines).block(block);
+            f.render_widget(paragraph, area);
         }
     }
 }
