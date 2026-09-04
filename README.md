@@ -43,12 +43,12 @@
 
 无需配置 Rust 环境或解压，下载后即可在终端直接执行：
 
-| 操作系统 / 架构 | 下载文件 | 说明 |
+| 操作系统 /架构 | 下载文件 | 说明 |
 | :--- | :--- | :--- |
-| **Windows 10 / 11 (x86_64)** | [translate-x86_64-pc-windows-msvc.exe](https://github.com/biaobiaobiao108/translate/releases/latest/download/translate-x86_64-pc-windows-msvc.exe) | 下载后重命名为 `translate.exe` 并加入 PATH |
-| **macOS (Apple Silicon M系列)** | [translate-aarch64-apple-darwin](https://github.com/biaobiaobiao108/translate/releases/latest/download/translate-aarch64-apple-darwin) | `chmod +x translate-*` 后直接运行 |
-| **Linux (Debian / Ubuntu x86_64)** | [translate-x86_64-unknown-linux-gnu](https://github.com/biaobiaobiao108/translate/releases/latest/download/translate-x86_64-unknown-linux-gnu) | `chmod +x translate-*` 后直接运行 |
-| **Linux (ARM64 / aarch64)** | [translate-aarch64-unknown-linux-gnu](https://github.com/biaobiaobiao108/translate/releases/latest/download/translate-aarch64-unknown-linux-gnu) | `chmod +x translate-*` 后直接运行 |
+| **Windows 10 / 11 (x86_64)** | [tran-x86_64-pc-windows-msvc.exe](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-x86_64-pc-windows-msvc.exe) | 下载后重命名为 `tran.exe` 并加入 PATH |
+| **macOS (Apple Silicon M系列)** | [tran-aarch64-apple-darwin](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-aarch64-apple-darwin) | `chmod +x tran-*` 后直接运行 |
+| **Linux (Debian / Ubuntu x86_64)** | [tran-x86_64-unknown-linux-gnu](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-x86_64-unknown-linux-gnu) | `chmod +x tran-*` 后直接运行 |
+| **Linux (ARM64 / aarch64)** | [tran-aarch64-unknown-linux-gnu](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-aarch64-unknown-linux-gnu) | `chmod +x tran-*` 后直接运行 |
 
 > 提示：也可以前往 [Releases 页面](https://github.com/biaobiaobiao108/translate/releases) 查看所有发布版本。
 
@@ -60,7 +60,7 @@
 git clone https://github.com/biaobiaobiao108/translate.git
 cd translate
 cargo build --release
-# 编译产物位于 target/release/translate
+# 编译产物位于 target/release/tran
 ```
 
 或使用 `cargo install` 安装到本地：
@@ -77,31 +77,31 @@ cargo install --path .
 
 ```bash
 # 单词查询：自动展示英美音标、各词性释义、权威双语例句
-translate rust
+tran rust
 
 # 句子中英互译：自动检测语种并翻译
-translate "Simplicity is prerequisite for reliability."
-translate "人生苦短，我用 Rust。"
+tran "Simplicity is prerequisite for reliability."
+tran "人生苦短，我用 Rust。"
 
 # 强制句子翻译模式（哪怕是单个单词）
-translate -s hello
+tran -s hello
 
 # 查看最近查询历史记录
-translate --history
+tran --history
 
 # 仅查看已收藏的生词记录
-translate --favorites
+tran --favorites
 
 # 使用网络代理
-translate rust --proxy http://127.0.0.1:7890
+tran rust --proxy http://127.0.0.1:7890
 ```
 
 ### 2. TUI 双栏沉浸模式
 
-直接执行 `translate i` 进入双栏交互界面：
+直接执行 `tran i` 进入双栏交互界面：
 
 ```bash
-translate i
+tran i
 ```
 
 ---

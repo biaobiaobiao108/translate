@@ -32,10 +32,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let items = db.list_history(args.show_favorites, 50)?;
         let title = if args.show_favorites { "⭐ 收藏生词本" } else { "📜 历史查询记录" };
         println!("\n  {} (共 {} 条)", title.bold().cyan(), items.len());
-        println!("  {}", "─".repeat(50).dimmed());
+        println!("  {}", "─".repeat(50).truecolor(90, 100, 138));
         for item in items {
             let fav = if item.is_favorite { "★".yellow() } else { " ".normal() };
-            println!("  {} {:<16} {} {}", fav, item.query.bold().white(), item.result_summary.dimmed(), item.created_at.dimmed());
+            println!(
+                "  {} {:<16} {} {}",
+                fav,
+                item.query.bold().truecolor(192, 202, 245),
+                item.result_summary.normal(),
+                item.created_at.truecolor(115, 125, 160)
+            );
         }
         println!();
         return Ok(());

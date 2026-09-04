@@ -8,7 +8,12 @@ use crate::db::{Database, HistoryItem};
 pub enum FocusedPane {
     Input,
     Result,
-    HistoryModal,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum InputMode {
+    Normal,
+    Insert,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -19,12 +24,14 @@ pub enum HistoryFilter {
 
 pub struct App<'a> {
     pub should_quit: bool,
+    pub mode: InputMode,
     pub focused_pane: FocusedPane,
     pub textarea: TextArea<'a>,
     pub is_searching: bool,
     pub current_result: Option<QueryOutput>,
     pub error_message: Option<String>,
     pub result_scroll_offset: u16,
+    pub toast_message: Option<(String, std::time::Instant)>,
 
     // 历史与生词抽屉
     pub show_history_drawer: bool,
@@ -45,12 +52,14 @@ impl<'a> App<'a> {
 
         Self {
             should_quit: false,
+            mode: InputMode::Insert,
             focused_pane: FocusedPane::Input,
             textarea,
             is_searching: false,
             current_result: None,
             error_message: None,
             result_scroll_offset: 0,
+            toast_message: None,
             show_history_drawer: false,
             history_items: history,
             history_selected_index: 0,
@@ -137,6 +146,58 @@ impl<'a> App<'a> {
         }
     }
 
+    pub fn set_toast(&mut self, msg: impl Into<String>) {
+        self.toast_message = Some((msg.into(), std::time::Instant::now()));
+    }
+
+    pub fn get_active_toast(&self) -> Option<&str> {
+        if let Some((msg, time)) = &self.toast_message {
+            if time.elapsed() < std::time::Duration::from_secs(3) {
+                return Some(msg.as_str());
+            }
+        }
+        None
+    }
+
+    pub fn clear_input(&mut self) {
+        self.textarea = TextArea::default();
+        self.textarea.set_placeholder_text("在此输入要翻译的内容，按 Enter 即刻翻译...");
+    }
+
+    pub fn copy_result_to_clipboard(&mut self) {
+        if let Some(ref result) = self.current_result {
+            let content_to_copy = match result {
+                QueryOutput::Dict(d) => {
+                    let mut lines = Vec::new();
+                    lines.push(d.word.clone());
+                    if let Some(phonetic) = &d.phonetic_us.as_ref().or(d.phonetic_uk.as_ref()) {
+                        lines.push(format!("/ {} /", phonetic));
+                    }
+                    for def in &d.definitions {
+                        lines.push(format!("{}: {}", def.pos, def.meanings.join("；")));
+                    }
+                    lines.join("\n")
+                }
+                QueryOutput::Sentence { translated, .. } => translated.clone(),
+            };
+
+            match arboard::Clipboard::new() {
+                Ok(mut clipboard) => {
+                    if let Err(e) = clipboard.set_text(&content_to_copy) {
+                        self.set_toast(format!("❌ 复制失败: {}", e));
+                    } else {
+                        self.set_toast("✔ 译文已复制到剪贴板");
+                    }
+                }
+                Err(e) => {
+                    self.set_toast(format!("❌ 无法访问剪贴板: {}", e));
+                }
+            }
+        } else {
+            self.set_toast("⚠ 暂无翻译结果可复制");
+        }
+    }
+
     pub async fn trigger_search(&mut self) {
         let text = self.get_input_string().trim().to_string();
         if text.is_empty() {
@@ -173,5 +234,33 @@ impl<'a> App<'a> {
         }
 
         self.is_searching = false;
+        self.mode = InputMode::Normal;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_initial_mode_and_toast() {
+        let db = Database::init().unwrap();
+        let client = Client::new();
+        let mut app = App::new(client, db);
+
+        // 默认处于 Insert 模式与 Input 面板
+        assert_eq!(app.mode, InputMode::Insert);
+        assert_eq!(app.focused_pane, FocusedPane::Input);
+
+        // Toast 状态测试
+        assert_eq!(app.get_active_toast(), None);
+        app.set_toast("测试提示");
+        assert_eq!(app.get_active_toast(), Some("测试提示"));
+
+        // 清空输入框测试
+        app.set_input_string("hello world");
+        assert_eq!(app.get_input_string(), "hello world");
+        app.clear_input();
+        assert_eq!(app.get_input_string(), "");
     }
 }
