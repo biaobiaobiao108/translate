@@ -14,7 +14,8 @@ pub const PURPLE: Color = Color::Rgb(157, 124, 216);   // #9d7cd8
 pub const ORANGE: Color = Color::Rgb(255, 158, 100);   // #ff9e64
 pub const YELLOW: Color = Color::Rgb(224, 175, 104);   // #e0af68
 pub const RED: Color = Color::Rgb(247, 118, 142);      // #f7768e
-pub const COMMENT: Color = Color::Rgb(120, 124, 153);  // #787c99
+pub const COMMENT: Color = Color::Rgb(120, 124, 153);  // #787c99 (Primary muted)
+pub const MUTED_TEXT: Color = Color::Rgb(86, 95, 137); // #565f89 (Subtle secondary muted)
 pub const SELECTION: Color = Color::Rgb(40, 52, 73);   // #283449 (Badge background)
 pub const DARK_BORDER: Color = Color::Rgb(65, 72, 104);// #414868 (Dividers / Borders)
 #[allow(dead_code)]

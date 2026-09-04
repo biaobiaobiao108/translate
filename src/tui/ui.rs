@@ -234,38 +234,39 @@ fn render_result_view(f: &mut Frame, app: &App, area: Rect) {
             f.render_widget(paragraph, area);
         }
         None => {
-            // 对齐 HTML 设计语言的精致 Tokyo Night 欢迎指南卡片
+            // 优雅低调的 Tokyo Night 占位提示：采用柔和灰蓝 (#787c99) 与次级灰 (#565f89)
             let mut lines = Vec::new();
             lines.push(Line::from(""));
-            lines.push(Line::from(vec![
-                Span::styled("  🚀 Tokyo Night 双引擎极速翻译  ", Style::default().fg(CYAN).bg(SELECTION).add_modifier(Modifier::BOLD)),
-            ]));
-            lines.push(Line::from(""));
-            lines.push(Line::from(Span::styled("  在左栏输入要查询的内容，按 Enter 即刻在此呈现：", Style::default().fg(FG))));
-            lines.push(Line::from(""));
-            lines.push(Line::from(vec![
-                Span::styled("  • ⚡ 单词智能精查: ", Style::default().fg(YELLOW).add_modifier(Modifier::BOLD)),
-                Span::styled("英美权威双音标、词性精解、双语例句", Style::default().fg(COMMENT)),
-            ]));
-            lines.push(Line::from(vec![
-                Span::styled("  • 🌐 长句流畅互译: ", Style::default().fg(GREEN).add_modifier(Modifier::BOLD)),
-                Span::styled("Google 翻译中英精准互译，支持大段长文", Style::default().fg(COMMENT)),
-            ]));
-            lines.push(Line::from(vec![
-                Span::styled("  • ⌨️ 极致双模式:   ", Style::default().fg(BLUE).add_modifier(Modifier::BOLD)),
-                Span::styled("Normal / Insert 无缝切换，Vim 键位平滑滚动", Style::default().fg(COMMENT)),
-            ]));
-            lines.push(Line::from(vec![
-                Span::styled("  • ⭐ 生词与历史:   ", Style::default().fg(MAGENTA).add_modifier(Modifier::BOLD)),
-                Span::styled("随时按 h 呼出生词抽屉，一键收藏与重查", Style::default().fg(COMMENT)),
-            ]));
+            lines.push(Line::from(Span::styled(
+                "  💡 在左栏输入要查询的内容，按 Enter 即刻呈现：",
+                Style::default().fg(COMMENT),
+            )));
             lines.push(Line::from(""));
             lines.push(Line::from(vec![
-                Span::styled("  💡 常用提示: ", Style::default().fg(ORANGE).add_modifier(Modifier::BOLD)),
-                Span::styled("i 开始输入 | Esc 导航 | Tab 切栏 | y 复制译文 | q 退出", Style::default().fg(COMMENT)),
+                Span::styled("  • 单词精查：", Style::default().fg(COMMENT)),
+                Span::styled("英美权威双音标、词性分类释义与权威双语例句", Style::default().fg(MUTED_TEXT)),
+            ]));
+            lines.push(Line::from(vec![
+                Span::styled("  • 长句互译：", Style::default().fg(COMMENT)),
+                Span::styled("Google 翻译智能检测语种，支持 50+ 行大段长文对照", Style::default().fg(MUTED_TEXT)),
+            ]));
+            lines.push(Line::from(vec![
+                Span::styled("  • 双栏模式：", Style::default().fg(COMMENT)),
+                Span::styled("Normal / Insert 双模式，支持 Vim 式平滑上下滚动", Style::default().fg(MUTED_TEXT)),
+            ]));
+            lines.push(Line::from(vec![
+                Span::styled("  • 生词历史：", Style::default().fg(COMMENT)),
+                Span::styled("随时按 h 呼出生词抽屉，支持一键收藏、管理与重查", Style::default().fg(MUTED_TEXT)),
+            ]));
+            lines.push(Line::from(""));
+            lines.push(Line::from(vec![
+                Span::styled("  快捷操作：", Style::default().fg(COMMENT)),
+                Span::styled("i 开始输入 | Esc 导航 | Tab 切栏 | y 复制译文 | q 退出 | ? 帮助", Style::default().fg(MUTED_TEXT)),
             ]));
 
-            let paragraph = Paragraph::new(lines).block(block);
+            let paragraph = Paragraph::new(lines)
+                .block(block)
+                .wrap(Wrap { trim: false });
             f.render_widget(paragraph, area);
         }
     }
