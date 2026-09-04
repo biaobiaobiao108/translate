@@ -37,22 +37,85 @@
 
 ---
 
-## 📥 下载安装
+## 📥 下载安装与 PATH 配置
 
-### 方式一：下载预编译独立单一二进制（推荐）
+### 方式一：下载预编译独立二进制（推荐，开箱即用）
 
-无需配置 Rust 环境或解压，下载后即可在终端直接执行：
+无需安装任何运行时或解压工具，下载对应系统架构的单一文件即可：
 
-| 操作系统 /架构 | 下载文件 | 说明 |
+| 操作系统 / 架构 | 发布文件 | 说明 |
 | :--- | :--- | :--- |
-| **Windows 10 / 11 (x86_64)** | [tran-x86_64-pc-windows-msvc.exe](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-x86_64-pc-windows-msvc.exe) | 下载后重命名为 `tran.exe` 并加入 PATH |
-| **macOS (Apple Silicon M系列)** | [tran-aarch64-apple-darwin](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-aarch64-apple-darwin) | `chmod +x tran-*` 后直接运行 |
-| **Linux (Debian / Ubuntu x86_64)** | [tran-x86_64-unknown-linux-gnu](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-x86_64-unknown-linux-gnu) | `chmod +x tran-*` 后直接运行 |
-| **Linux (ARM64 / aarch64)** | [tran-aarch64-unknown-linux-gnu](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-aarch64-unknown-linux-gnu) | `chmod +x tran-*` 后直接运行 |
+| **Windows 10 / 11 (x86_64)** | [tran-x86_64-pc-windows-msvc.exe](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-x86_64-pc-windows-msvc.exe) | 下载后重命名为 `tran.exe` 并配置 PATH |
+| **macOS (Apple Silicon M1~M4)** | [tran-aarch64-apple-darwin](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-aarch64-apple-darwin) | 重命名为 `tran` 并移入 `/usr/local/bin` |
+| **Linux (Debian / Ubuntu / CentOS x86_64)** | [tran-x86_64-unknown-linux-gnu](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-x86_64-unknown-linux-gnu) | 重命名为 `tran` 并移入 `/usr/local/bin` |
+| **Linux (ARM64 / aarch64)** | [tran-aarch64-unknown-linux-gnu](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-aarch64-unknown-linux-gnu) | 重命名为 `tran` 并移入 `/usr/local/bin` |
 
-> 提示：也可以前往 [Releases 页面](https://github.com/biaobiaobiao108/translate/releases) 查看所有发布版本。
+> 提示：也可以前往 [Releases 页面](https://github.com/biaobiaobiao108/translate/releases) 查看所有历史版本与产物校验。
 
-### 方式二：从源码编译构建
+#### 💡 如何配置 PATH，以便在终端中随处使用 `tran` 命令？
+
+二进制程序下载后，默认带有平台后缀文件名且位于下载目录。为了能在任意终端窗口中直接输入 `tran` 运行，需要将其**重命名为 `tran`（Windows 为 `tran.exe`）并移入系统环境变量 PATH 所包含的目录**。各平台操作命令如下：
+
+#### 🪟 Windows 系统
+打开 PowerShell（进入你存放下载文件的目录，如 `Downloads`）：
+
+- **方式 A（管理员运行，最省心）：直接移入 `C:\Windows`**
+  ```powershell
+  Move-Item .\tran-x86_64-pc-windows-msvc.exe "C:\Windows\tran.exe"
+  ```
+- **方式 B（普通用户权限）：移入用户目录并配置 PATH**
+  ```powershell
+  # 1. 创建专用工具目录并移动重命名
+  New-Item -ItemType Directory -Force -Path "$HOME\bin"
+  Move-Item .\tran-x86_64-pc-windows-msvc.exe "$HOME\bin\tran.exe"
+
+  # 2. 将 $HOME\bin 永久加入当前用户的 PATH 环境变量
+  [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";$HOME\bin", "User")
+  ```
+  *(注：如果你的电脑已经装有 Rust，也可以直接移动至 `$HOME\.cargo\bin\tran.exe`，该目录默认已在 PATH 中)*
+
+#### 🍎 macOS 系统 (Apple Silicon)
+打开 Terminal 终端，进入下载目录：
+```bash
+# 1. 赋予执行权限并重命名移动至 /usr/local/bin (系统标准命令目录)
+chmod +x tran-aarch64-apple-darwin
+sudo mv tran-aarch64-apple-darwin /usr/local/bin/tran
+
+# 2. 若 macOS 拦截提示“无法打开，因为无法验证开发者”，执行以下命令放行：
+xattr -d com.apple.quarantine /usr/local/bin/tran
+```
+
+#### 🐧 Linux 系统 (Ubuntu / Debian / CentOS / Arch 等)
+打开终端，进入下载目录：
+```bash
+# 赋予执行权限并重命名移动至 /usr/local/bin
+chmod +x tran-*-linux-*
+sudo mv tran-*-linux-* /usr/local/bin/tran
+```
+
+#### ✅ 验证全局命令
+完成上述配置后，**新开一个终端窗口**（让 PATH 生效），执行：
+```bash
+tran --version
+# 或直接查询一个单词
+tran rust
+```
+如果正常打印出版本号或 Tokyo Night 配色词典卡片，即代表全局配置成功！
+
+---
+
+### 方式二：通过 Cargo 一键安装（Rust 用户首选）
+
+如果你本地已安装 Rust 开发环境，可直接通过 `cargo` 从 GitHub 仓库一键安装：
+
+```bash
+cargo install --git https://github.com/biaobiaobiao108/translate.git tran
+```
+该命令会自动编译并将二进制安装到 `~/.cargo/bin/tran`，无需手动配置 PATH，开箱即用。
+
+---
+
+### 方式三：从源码编译构建
 
 确保已安装 Rust 稳定版工具链：
 
@@ -60,7 +123,7 @@
 git clone https://github.com/biaobiaobiao108/translate.git
 cd translate
 cargo build --release
-# 编译产物位于 target/release/tran
+# 编译产物位于 target/release/tran (Windows 下为 tran.exe)
 ```
 
 或使用 `cargo install` 安装到本地：
@@ -148,17 +211,17 @@ tran i
 
 ## 🌐 在线介绍页
 
-本项目在 [`doc/index.html`](doc/index.html) 提供了现代美观的静态产品展示页。欢迎在浏览器中直接打开预览：
+本项目在 [`docs/index.html`](docs/index.html) 提供了现代美观的静态产品展示页。欢迎在浏览器中直接打开预览：
 
 ```bash
 # Windows
-start doc/index.html
+start docs/index.html
 
 # macOS
-open doc/index.html
+open docs/index.html
 
 # Linux
-xdg-open doc/index.html
+xdg-open docs/index.html
 ```
 
 ---

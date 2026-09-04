@@ -484,6 +484,131 @@
       transform: translateY(0);
     }
 
+    /* PATH Setup Guide */
+    .path-guide-container {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 18px;
+      padding: 32px 36px;
+      margin-top: 40px;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.3);
+      position: relative;
+    }
+    .path-guide-head {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .path-guide-head h3 {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .path-guide-head p {
+      color: var(--fg-sub);
+      font-size: 0.95rem;
+    }
+    .guide-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+    .guide-tab-btn {
+      background: #16161e;
+      border: 1px solid var(--surface-border-bright);
+      color: var(--fg-sub);
+      font-family: var(--font-sans);
+      font-weight: 600;
+      font-size: 0.9rem;
+      padding: 8px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .guide-tab-btn:hover {
+      color: var(--fg);
+      border-color: var(--blue);
+    }
+    .guide-tab-btn.active {
+      background: #24283b;
+      color: var(--cyan);
+      border-color: var(--cyan);
+      box-shadow: 0 4px 14px rgba(125, 207, 255, 0.18);
+    }
+    .guide-panel {
+      display: none;
+      animation: fadeIn 0.25s ease;
+    }
+    .guide-panel.active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .step-list {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .step-item {
+      background: #16161e;
+      border: 1px solid var(--surface-border);
+      border-radius: 12px;
+      padding: 18px 22px;
+      transition: border-color 0.2s ease;
+    }
+    .step-item:hover {
+      border-color: var(--surface-border-bright);
+    }
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      color: #fff;
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+    }
+    .step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(122, 162, 247, 0.2);
+      color: var(--blue);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.82rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .step-desc {
+      font-size: 0.88rem;
+      color: var(--fg-sub);
+      margin-bottom: 10px;
+      line-height: 1.6;
+    }
+    .code-block {
+      background: #12131a;
+      border: 1px solid var(--surface-border);
+      border-radius: 8px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .code-block code {
+      font-family: var(--font-mono);
+      font-size: 0.86rem;
+      color: var(--cyan);
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
     /* Scroll-Driven Animations & Progressive Fallbacks (Modern Web Guidance) */
     @media (prefers-reduced-motion: no-preference) {
       @supports ((animation-timeline: view()) and (animation-range: entry)) {
@@ -500,7 +625,8 @@
         .feature-card,
         .download-card,
         .mascot-card,
-        .quick-install-box {
+        .quick-install-box,
+        .path-guide-container {
           animation: scroll-reveal auto cubic-bezier(0.16, 1, 0.3, 1) backwards;
           animation-timeline: view();
           animation-range: entry 5% entry 35%;
@@ -513,7 +639,8 @@
       .feature-card,
       .download-card,
       .mascot-card,
-      .quick-install-box {
+      .quick-install-box,
+      .path-guide-container {
         opacity: 0;
         transform: translateY(24px);
         transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
@@ -521,7 +648,8 @@
       .feature-card.in-view,
       .download-card.in-view,
       .mascot-card.in-view,
-      .quick-install-box.in-view {
+      .quick-install-box.in-view,
+      .path-guide-container.in-view {
         opacity: 1;
         transform: translateY(0);
       }
@@ -734,8 +862,8 @@
           </div>
 
           <div class="dl-guide-box">
-            <span class="dl-guide-text">终端运行：<code>.\tran.exe</code></span>
-            <button class="copy-btn" onclick="copyText('.\\tran.exe', this)" title="复制快速上手命令">
+            <span class="dl-guide-text">重命名安装：<code>Move-Item .\tran-*.exe C:\Windows\tran.exe</code></span>
+            <button class="copy-btn" onclick="copyText('Move-Item .\\tran-x86_64-pc-windows-msvc.exe C:\\Windows\\tran.exe', this)" title="复制快速上手命令">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
               <span>复制</span>
             </button>
@@ -772,8 +900,8 @@
           </div>
 
           <div class="dl-guide-box">
-            <span class="dl-guide-text"><code>chmod +x tran-* && ./tran-*</code></span>
-            <button class="copy-btn" onclick="copyText('chmod +x tran-* && ./tran-*', this)" title="复制快速上手命令">
+            <span class="dl-guide-text">重命名安装：<code>sudo mv tran-* /usr/local/bin/tran</code></span>
+            <button class="copy-btn" onclick="copyText('chmod +x tran-aarch64-apple-darwin && sudo mv tran-aarch64-apple-darwin /usr/local/bin/tran', this)" title="复制快速上手命令">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
               <span>复制</span>
             </button>
@@ -810,8 +938,8 @@
           </div>
 
           <div class="dl-guide-box">
-            <span class="dl-guide-text"><code>chmod +x tran-* && ./tran-*</code></span>
-            <button class="copy-btn" onclick="copyText('chmod +x tran-* && ./tran-*', this)" title="复制快速上手命令">
+            <span class="dl-guide-text">重命名安装：<code>sudo mv tran-* /usr/local/bin/tran</code></span>
+            <button class="copy-btn" onclick="copyText('chmod +x tran-x86_64-unknown-linux-gnu && sudo mv tran-x86_64-unknown-linux-gnu /usr/local/bin/tran', this)" title="复制快速上手命令">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
               <span>复制</span>
             </button>
@@ -848,11 +976,150 @@
           </div>
 
           <div class="dl-guide-box">
-            <span class="dl-guide-text"><code>chmod +x tran-* && ./tran-*</code></span>
-            <button class="copy-btn" onclick="copyText('chmod +x tran-* && ./tran-*', this)" title="复制快速上手命令">
+            <span class="dl-guide-text">重命名安装：<code>sudo mv tran-* /usr/local/bin/tran</code></span>
+            <button class="copy-btn" onclick="copyText('chmod +x tran-aarch64-unknown-linux-gnu && sudo mv tran-aarch64-unknown-linux-gnu /usr/local/bin/tran', this)" title="复制快速上手命令">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
               <span>复制</span>
             </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detailed PATH & Usage Guide -->
+      <div class="path-guide-container" id="path-guide">
+        <div class="path-guide-head">
+          <h3>🛠️ 终端全局使用与 PATH 环境变量配置指引</h3>
+          <p>只需简单一步重命名并移入 PATH 目录，即可在系统任意终端直接敲 <code>tran</code> 全局畅享翻译</p>
+        </div>
+
+        <div class="guide-tabs">
+          <button id="guide-btn-win" class="guide-tab-btn active" onclick="switchGuideTab('win')">🪟 Windows (PowerShell)</button>
+          <button id="guide-btn-mac" class="guide-tab-btn" onclick="switchGuideTab('mac')">🍎 macOS (Apple Silicon)</button>
+          <button id="guide-btn-linux" class="guide-tab-btn" onclick="switchGuideTab('linux')">🐧 Linux (Ubuntu / Debian)</button>
+        </div>
+
+        <!-- Windows Guide -->
+        <div id="guide-panel-win" class="guide-panel active">
+          <div class="step-list">
+            <div class="step-item">
+              <div class="step-header">
+                <span class="step-num">1</span>
+                <span>重命名并移入 PATH 环境变量目录</span>
+              </div>
+              <p class="step-desc"><strong>方式 A（管理员模式，最省心）：</strong>以管理员身份打开 PowerShell，进入下载目录执行，直接移入自带 PATH 的 Windows 系统目录：</p>
+              <div class="code-block">
+                <code>Move-Item .\tran-x86_64-pc-windows-msvc.exe "C:\Windows\tran.exe"</code>
+                <button class="copy-btn" onclick="copyText('Move-Item .\\tran-x86_64-pc-windows-msvc.exe \"C:\\Windows\\tran.exe\"', this)">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  <span>复制</span>
+                </button>
+              </div>
+              <p class="step-desc" style="margin-top: 14px;"><strong>方式 B（普通用户模式）：</strong>新建个人工具目录并永久追加至当前用户的 PATH：</p>
+              <div class="code-block">
+                <code>New-Item -ItemType Directory -Force -Path "$HOME\bin"; Move-Item .\tran-x86_64-pc-windows-msvc.exe "$HOME\bin\tran.exe"; [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";$HOME\bin", "User")</code>
+                <button class="copy-btn" onclick="copyText('New-Item -ItemType Directory -Force -Path \"$HOME\\bin\"; Move-Item .\\tran-x86_64-pc-windows-msvc.exe \"$HOME\\bin\\tran.exe\"; [Environment]::SetEnvironmentVariable(\"Path\", [Environment]::GetEnvironmentVariable(\"Path\", \"User\") + \";$HOME\\bin\", \"User\")', this)">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  <span>复制</span>
+                </button>
+              </div>
+              <p class="step-desc" style="margin-top: 8px; font-size: 0.82rem; color: var(--fg-sub);"><em>💡 提示：若本地已安装 Rust，也可直接移动至 <code>$HOME\.cargo\bin\tran.exe</code>，该目录默认已在 PATH 中。</em></p>
+            </div>
+            <div class="step-item">
+              <div class="step-header">
+                <span class="step-num">2</span>
+                <span>新开终端验证与立即使用</span>
+              </div>
+              <p class="step-desc">新开一个 PowerShell 或 CMD 窗口，直接输入命令即可畅享翻译：</p>
+              <div class="code-block">
+                <code>tran rust</code>
+                <button class="copy-btn" onclick="copyText('tran rust', this)">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  <span>复制</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- macOS Guide -->
+        <div id="guide-panel-mac" class="guide-panel">
+          <div class="step-list">
+            <div class="step-item">
+              <div class="step-header">
+                <span class="step-num">1</span>
+                <span>赋予执行权限并移入系统命令目录</span>
+              </div>
+              <p class="step-desc">打开 Terminal 终端，进入下载目录，运行以下命令将其移动至系统的全局执行目录：</p>
+              <div class="code-block">
+                <code>chmod +x tran-aarch64-apple-darwin && sudo mv tran-aarch64-apple-darwin /usr/local/bin/tran</code>
+                <button class="copy-btn" onclick="copyText('chmod +x tran-aarch64-apple-darwin && sudo mv tran-aarch64-apple-darwin /usr/local/bin/tran', this)">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  <span>复制</span>
+                </button>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-header">
+                <span class="step-num">2</span>
+                <span>解除 macOS 开发者安全拦截（如遇提示）</span>
+              </div>
+              <p class="step-desc">若 macOS 弹出“无法打开，因为无法验证开发者”，在终端执行此命令解除隔离属性：</p>
+              <div class="code-block">
+                <code>xattr -d com.apple.quarantine /usr/local/bin/tran</code>
+                <button class="copy-btn" onclick="copyText('xattr -d com.apple.quarantine /usr/local/bin/tran', this)">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  <span>复制</span>
+                </button>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-header">
+                <span class="step-num">3</span>
+                <span>在任意终端立即使用</span>
+              </div>
+              <p class="step-desc">执行 <code>tran i</code> 即可进入沉浸式 50/50 TUI 对照翻译：</p>
+              <div class="code-block">
+                <code>tran i</code>
+                <button class="copy-btn" onclick="copyText('tran i', this)">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  <span>复制</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Linux Guide -->
+        <div id="guide-panel-linux" class="guide-panel">
+          <div class="step-list">
+            <div class="step-item">
+              <div class="step-header">
+                <span class="step-num">1</span>
+                <span>赋予执行权限并移入全局路径</span>
+              </div>
+              <p class="step-desc">打开终端进入下载目录，赋予权限并移入 <code>/usr/local/bin</code>：</p>
+              <div class="code-block">
+                <code>chmod +x tran-*-linux-* && sudo mv tran-*-linux-* /usr/local/bin/tran</code>
+                <button class="copy-btn" onclick="copyText('chmod +x tran-*-linux-* && sudo mv tran-*-linux-* /usr/local/bin/tran', this)">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  <span>复制</span>
+                </button>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-header">
+                <span class="step-num">2</span>
+                <span>验证与体验</span>
+              </div>
+              <p class="step-desc">验证命令是否已全局就绪：</p>
+              <div class="code-block">
+                <code>tran "Simplicity is prerequisite for reliability."</code>
+                <button class="copy-btn" onclick="copyText('tran \"Simplicity is prerequisite for reliability.\"', this)">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  <span>复制</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -950,6 +1217,16 @@
       }
     }
 
+    // PATH Guide Tab Switching
+    function switchGuideTab(platform) {
+      document.querySelectorAll('.guide-tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.guide-panel').forEach(panel => panel.classList.remove('active'));
+      const activeBtn = document.getElementById(`guide-btn-${platform}`);
+      const activePanel = document.getElementById(`guide-panel-${platform}`);
+      if (activeBtn) activeBtn.classList.add('active');
+      if (activePanel) activePanel.classList.add('active');
+    }
+
     // IntersectionObserver Progressive Enhancement Fallback for Scroll-Driven Animations
     if (!CSS.supports('(animation-timeline: view()) and (animation-range: entry)')) {
       const observer = new IntersectionObserver((entries) => {
@@ -964,7 +1241,7 @@
         rootMargin: '0px 0px -40px 0px'
       });
 
-      document.querySelectorAll('.feature-card, .download-card, .mascot-card, .quick-install-box').forEach(el => {
+      document.querySelectorAll('.feature-card, .download-card, .mascot-card, .quick-install-box, .path-guide-container').forEach(el => {
         observer.observe(el);
       });
     }
