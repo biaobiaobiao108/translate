@@ -170,7 +170,10 @@ fn render_result_view(f: &mut Frame, app: &App, area: Rect) {
 
             // 词典释义
             if !detail.definitions.is_empty() {
-                lines.push(Line::from(Span::styled(" 【词典释义】", Style::default().fg(GREEN).add_modifier(Modifier::BOLD))));
+                lines.push(Line::from(Span::styled(
+                    " 【词典释义】 ",
+                    Style::default().fg(GREEN).bg(SELECTION).add_modifier(Modifier::BOLD),
+                )));
                 for def in &detail.definitions {
                     let formatted_pos = if def.pos.ends_with('.') {
                         def.pos.clone()
@@ -187,12 +190,15 @@ fn render_result_view(f: &mut Frame, app: &App, area: Rect) {
                 }
             }
 
-            // 双语例句 (对齐 HTML: 英文 #7aa2f7 蓝色, 中文 #787c99 优雅灰)
+            // 双语例句 (英文 #7aa2f7 蓝色, 中文 #a9b1d6 高可读性蓝灰)
             if !detail.examples.is_empty() {
                 if !detail.definitions.is_empty() {
                     lines.push(Line::from(""));
                 }
-                lines.push(Line::from(Span::styled(" 【双语例句】", Style::default().fg(MAGENTA).add_modifier(Modifier::BOLD))));
+                lines.push(Line::from(Span::styled(
+                    " 【双语例句】 ",
+                    Style::default().fg(MAGENTA).bg(SELECTION).add_modifier(Modifier::BOLD),
+                )));
                 for (i, eg) in detail.examples.iter().enumerate() {
                     lines.push(Line::from(vec![
                         Span::styled(format!("  {}. ", i + 1), Style::default().fg(BLUE).add_modifier(Modifier::BOLD)),
@@ -200,7 +206,7 @@ fn render_result_view(f: &mut Frame, app: &App, area: Rect) {
                     ]));
                     lines.push(Line::from(vec![
                         Span::raw("     "),
-                        Span::styled(&eg.trans, Style::default().fg(COMMENT)),
+                        Span::styled(&eg.trans, Style::default().fg(FG_SUB)),
                     ]));
                 }
             }

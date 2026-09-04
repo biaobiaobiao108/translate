@@ -1,9 +1,9 @@
 use colored::*;
 use crate::api::dict::{QueryOutput, WordDetail};
 
-// Tokyo Night TrueColor RGB Constants (aligned with docs/index.html)
+// Tokyo Night TrueColor RGB Constants
 const TN_FG: (u8, u8, u8) = (192, 202, 245);         // #c0caf5 Main text
-const TN_FG_SUB: (u8, u8, u8) = (120, 124, 153);     // #787c99 Subdued text / Example translation
+const TN_TRANSLATION: (u8, u8, u8) = (169, 177, 214); // #a9b1d6 Readable secondary text / Example translation
 const TN_BLUE: (u8, u8, u8) = (122, 162, 247);       // #7aa2f7 Accent / Header text / English example
 const TN_CYAN: (u8, u8, u8) = (125, 207, 255);       // #7dcfff Phonetics / Numbers
 const TN_GREEN: (u8, u8, u8) = (158, 206, 106);      // #9ece6a Definitions header / Translated text
@@ -11,6 +11,14 @@ const TN_MAGENTA: (u8, u8, u8) = (187, 154, 247);    // #bb9af7 Examples header 
 const TN_ORANGE: (u8, u8, u8) = (255, 158, 100);     // #ff9e64 POS tags (n., v.)
 const TN_SELECTION: (u8, u8, u8) = (40, 52, 73);     // #283449 Badge background
 const TN_BORDER: (u8, u8, u8) = (65, 72, 104);       // #414868 Divider line
+
+fn format_section_title(label: &str, color: (u8, u8, u8)) -> String {
+    format!(" {} ", label)
+        .bold()
+        .truecolor(color.0, color.1, color.2)
+        .on_truecolor(TN_SELECTION.0, TN_SELECTION.1, TN_SELECTION.2)
+        .to_string()
+}
 
 pub fn render_cli_output(output: &QueryOutput) {
     match output {
@@ -57,12 +65,7 @@ fn render_word_card(detail: &WordDetail) {
 
     // 词性与释义
     if !detail.definitions.is_empty() {
-        println!(
-            "{}",
-            " 【词典释义】"
-                .bold()
-                .truecolor(TN_GREEN.0, TN_GREEN.1, TN_GREEN.2)
-        );
+        println!("{}", format_section_title("【词典释义】", TN_GREEN));
         for def in &detail.definitions {
             let pos_tag = if !def.pos.is_empty() {
                 let formatted_pos = if def.pos.ends_with('.') {
@@ -90,12 +93,7 @@ fn render_word_card(detail: &WordDetail) {
         if !detail.definitions.is_empty() {
             println!();
         }
-        println!(
-            "{}",
-            " 【双语例句】"
-                .bold()
-                .truecolor(TN_MAGENTA.0, TN_MAGENTA.1, TN_MAGENTA.2)
-        );
+        println!("{}", format_section_title("【双语例句】", TN_MAGENTA));
         for (i, eg) in detail.examples.iter().enumerate() {
             let num = format!("{}.", i + 1);
             println!(
@@ -105,7 +103,7 @@ fn render_word_card(detail: &WordDetail) {
             );
             println!(
                 "     {}",
-                eg.trans.truecolor(TN_FG_SUB.0, TN_FG_SUB.1, TN_FG_SUB.2)
+                eg.trans.truecolor(TN_TRANSLATION.0, TN_TRANSLATION.1, TN_TRANSLATION.2)
             );
         }
     }

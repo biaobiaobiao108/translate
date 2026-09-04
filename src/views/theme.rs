@@ -4,8 +4,7 @@ use ratatui::style::Color;
 #[allow(dead_code)]
 pub const BG: Color = Color::Rgb(26, 27, 38);          // #1a1b26
 pub const FG: Color = Color::Rgb(192, 202, 245);       // #c0caf5
-#[allow(dead_code)]
-pub const FG_SUB: Color = Color::Rgb(120, 124, 153);   // #787c99 (Subdued text / translations)
+pub const FG_SUB: Color = Color::Rgb(169, 177, 214);   // #a9b1d6 (Readable secondary text / translations)
 pub const BLUE: Color = Color::Rgb(122, 162, 247);     // #7aa2f7
 pub const CYAN: Color = Color::Rgb(125, 207, 255);     // #7dcfff
 pub const GREEN: Color = Color::Rgb(158, 206, 106);    // #9ece6a
