@@ -152,7 +152,7 @@ impl<'a> App<'a> {
                     self.history_selected_index = self.history_items.len().saturating_sub(1);
                 }
             }
-            Err(error) => self.set_toast(format!("❌ 历史记录刷新失败: {}", error)),
+            Err(error) => self.set_toast(format!("[错误] 历史记录刷新失败: {}", error)),
         }
     }
 
@@ -177,13 +177,13 @@ impl<'a> App<'a> {
         match self.db.toggle_favorite(id) {
             Ok(is_favorite) => {
                 self.set_toast(if is_favorite {
-                    "⭐ 已加入生词本"
+                    "[完成] 已加入生词本"
                 } else {
                     "已从生词本移除"
                 });
                 self.reload_history();
             }
-            Err(error) => self.set_toast(format!("❌ 收藏操作失败: {}", error)),
+            Err(error) => self.set_toast(format!("[错误] 收藏操作失败: {}", error)),
         }
     }
 
@@ -201,7 +201,7 @@ impl<'a> App<'a> {
                 self.set_toast("已删除历史记录");
                 self.reload_history();
             }
-            Err(error) => self.set_toast(format!("❌ 删除失败: {}", error)),
+            Err(error) => self.set_toast(format!("[错误] 删除失败: {}", error)),
         }
     }
 
@@ -225,7 +225,7 @@ impl<'a> App<'a> {
 
     pub fn copy_result_to_clipboard(&mut self) {
         let Some(result) = self.current_result.as_ref() else {
-            self.set_toast("⚠ 暂无翻译结果可复制");
+            self.set_toast("[提示] 暂无翻译结果可复制");
             return;
         };
 
@@ -250,10 +250,10 @@ impl<'a> App<'a> {
 
         match arboard::Clipboard::new() {
             Ok(mut clipboard) => match clipboard.set_text(&content_to_copy) {
-                Ok(()) => self.set_toast("✔ 译文已复制到剪贴板"),
-                Err(error) => self.set_toast(format!("❌ 复制失败: {}", error)),
+                Ok(()) => self.set_toast("[完成] 译文已复制到剪贴板"),
+                Err(error) => self.set_toast(format!("[错误] 复制失败: {}", error)),
             },
-            Err(error) => self.set_toast(format!("❌ 无法访问剪贴板: {}", error)),
+            Err(error) => self.set_toast(format!("[错误] 无法访问剪贴板: {}", error)),
         }
     }
 
@@ -342,7 +342,7 @@ impl<'a> App<'a> {
         match self.db.add_record(&query, &summary) {
             Ok(_) => self.reload_history(),
             Err(error) => {
-                self.set_toast(format!("⚠ 翻译成功，但历史记录保存失败: {}", error));
+                self.set_toast(format!("[警告] 翻译成功，但历史记录保存失败: {}", error));
             }
         }
     }

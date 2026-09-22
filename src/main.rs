@@ -10,18 +10,17 @@ use std::process::ExitCode;
 use api::client::build_client;
 use api::dict::smart_query;
 use clap::Parser;
-use colored::*;
-use crossterm::terminal;
+use colored::Colorize;
 use db::Database;
 use error::Result;
-use views::cli_render::render_cli_output;
+use views::cli_render::{render_cli_output, render_history_items};
 
 #[tokio::main]
 async fn main() -> ExitCode {
     match run().await {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("{} {}", "❌ 执行失败:".red().bold(), error);
+            eprintln!("{} {}", "[错误] 执行失败:".red().bold(), error);
             ExitCode::FAILURE
         }
     }
@@ -34,42 +33,12 @@ async fn run() -> Result<()> {
     if args.show_history || args.show_favorites {
         let db = Database::init()?;
         let items = db.list_history(args.show_favorites, 50)?;
-        let title = if args.show_favorites {
-            "⭐ 收藏生词本"
-        } else {
-            "📜 历史查询记录"
-        };
-        println!("\n  {} (共 {} 条)", title.bold().cyan(), items.len());
-        println!(
-            "  {}",
-            "─"
-                .repeat(
-                    terminal::size()
-                        .map(|(width, _)| usize::from(width).clamp(40, 120))
-                        .unwrap_or(50)
-                )
-                .truecolor(90, 100, 138)
-        );
-        for item in items {
-            let fav = if item.is_favorite {
-                "★".yellow()
-            } else {
-                " ".normal()
-            };
-            println!(
-                "  {} {}  {} {}",
-                fav,
-                item.query,
-                item.result_summary,
-                item.created_at.truecolor(115, 125, 160)
-            );
-        }
-        println!();
+        render_history_items(&items, args.show_favorites);
         return Ok(());
     }
 
     if args.query.is_empty() {
-        println!("{}", "💡 提示: 请输入要查询的单词或句子。例如:".yellow());
+        println!("{}", "[提示] 请输入要查询的单词或句子。例如:".yellow());
         println!("   tran hello");
         println!("   tran 苹果");
         println!("   tran -s \"To be, or not to be, that is the question.\"");
@@ -91,7 +60,7 @@ async fn run() -> Result<()> {
     render_cli_output(&output);
 
     if let Err(error) = db.add_record(&query_text, &output.summary()) {
-        eprintln!("{} {}", "⚠ 历史记录保存失败:".yellow(), error);
+        eprintln!("{} {}", "[警告] 历史记录保存失败:".yellow(), error);
     }
 
     Ok(())

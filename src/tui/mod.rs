@@ -112,7 +112,7 @@ pub async fn run_tui(client: Client, db: Database) -> Result<()> {
                     && !app.show_help
                 {
                     let term_size = terminal.size()?;
-                    let max_width = (term_size.width / 2).saturating_sub(4);
+                    let max_width = ui::input_content_width(term_size.width);
                     app.paste_text(&pasted, max_width);
                 }
             }
@@ -189,7 +189,7 @@ pub async fn run_tui(client: Client, db: Database) -> Result<()> {
                 }
 
                 let term_size = terminal.size()?;
-                let inner_height = term_size.height.saturating_sub(3);
+                let inner_height = term_size.height.saturating_sub(5).max(1);
 
                 match app.mode {
                     InputMode::Insert => match key.code {
@@ -215,7 +215,7 @@ pub async fn run_tui(client: Client, db: Database) -> Result<()> {
                             if !key.modifiers.contains(KeyModifiers::CONTROL)
                                 && !key.modifiers.contains(KeyModifiers::ALT) =>
                         {
-                            let max_width = (term_size.width / 2).saturating_sub(4);
+                            let max_width = ui::input_content_width(term_size.width);
                             app.insert_char_with_wrap(c, max_width);
                         }
                         _ => {
