@@ -14,6 +14,15 @@ pub enum AppError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
+    #[error("Input error: {0}")]
+    InvalidInput(String),
+
+    #[error("Dictionary entry not found: {0}")]
+    NotFound(String),
+
+    #[error("Remote response error: {0}")]
+    Protocol(String),
+
     #[error("{0}")]
     General(String),
 }

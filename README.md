@@ -1,7 +1,7 @@
-# translate · 高性能现代化 CLI / TUI 翻译工具
+# tran · 高性能现代化 CLI / TUI 翻译工具
 
 <div align="center">
-  <img src="doc/assets/logo.svg" alt="translate logo" width="180" height="180" />
+  <img src="docs/assets/logo.svg" alt="tran logo" width="180" height="180" />
   <br>
   <p><strong>专为极客与开发者打造的高性能终端翻译利器 · 沉浸式 Tokyo Night 配色 · 原生单一独立二进制</strong></p>
   <p>
@@ -17,7 +17,7 @@
 
 ## 📖 项目简介
 
-**translate** 是一款基于 Rust 开发的现代化极速 CLI / TUI 翻译与词典工具。它采用优雅深邃的 **Tokyo Night** 主题配色，告别传统繁重缓慢的图形翻译软件，让查词与翻译在终端中达到极致的敏捷与愉悦。
+**tran** 是一款基于 Rust 开发的现代化 CLI / TUI 翻译与词典工具。它采用优雅深邃的 **Tokyo Night** 主题配色，让查词与翻译在终端中保持敏捷、可控。
 
 - **CLI 模式**：极速毫秒级响应，单词智能分流呈现详尽权威词典卡片（英美音标、词性精释、权威中英双语例句）；长句自动调用 Google 智能翻译接口。
 - **TUI 模式**：左右等宽 (50/50) 沉浸式双栏对照编辑，支持 50+ 行超长文本视口跟随滚动、微秒级批量粘贴注入保护、输入法 (IME) 物理光标精确跟随定位、本地 SQLite 生词本与历史抽屉管理。
@@ -32,8 +32,10 @@
 - 📝 **工业级文本编辑**：基于 `tui-textarea` 深度调优，支持长文本跨行移动、平滑自动折行与全向光标漫游。
 - 🚀 **毫秒级长文粘贴保护**：底层事件循环全面支持终端括号化粘贴（Bracketed Paste），粘贴海量多行文本无感注入，绝不误触发网络请求。
 - 🎯 **输入法 (IME) 精准跟随**：通过 `unicode-width` 动态测量全角中文字符与英文字符真实列宽，硬件物理光标与系统输入法候选框时刻同步定位在字符最右侧。
-- ⭐ **本地生词本与历史抽屉**：轻量 SQLite 本地持久化（`~/.translate/history.db`），支持一键收藏生词、历史回溯、条目过滤与一键重查。
+- ⭐ **本地生词本与历史抽屉**：轻量 SQLite 本地持久化，支持去重、自动保留最近记录、一键收藏、历史回溯、条目过滤与一键重查。新安装使用平台数据目录，旧版本的 `~/.translate/history.db` 会继续沿用。
 - 🌐 **代理与环境感知**：支持 `--proxy` 参数或自动感知系统环境变量（HTTP / SOCKS5），网络访问无缝流畅。
+
+新安装的数据目录遵循系统约定：Windows 使用 `%LOCALAPPDATA%\\tran`，macOS 使用 `~/Library/Application Support/tran`，Linux 使用 `$XDG_DATA_HOME/tran`（未设置时使用系统默认目录）。
 
 ---
 
@@ -50,7 +52,7 @@
 | **Linux (Debian / Ubuntu / CentOS x86_64)** | [tran-x86_64-unknown-linux-gnu](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-x86_64-unknown-linux-gnu) | 重命名为 `tran` 并移入 `/usr/local/bin` |
 | **Linux (ARM64 / aarch64)** | [tran-aarch64-unknown-linux-gnu](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-aarch64-unknown-linux-gnu) | 重命名为 `tran` 并移入 `/usr/local/bin` |
 
-> 提示：也可以前往 [Releases 页面](https://github.com/biaobiaobiao108/translate/releases) 查看所有历史版本与产物校验。
+> 提示：也可以前往 [Releases 页面](https://github.com/biaobiaobiao108/translate/releases) 查看所有历史版本与发布产物。
 
 #### 💡 如何配置 PATH，以便在终端中随处使用 `tran` 命令？
 

@@ -1,7 +1,11 @@
 use clap::Parser;
 
 #[derive(Parser, Debug)]
-#[command(name = "translate", version = "0.1.0", about = "现代快速、美观的 CLI / TUI 翻译与词典工具")]
+#[command(
+    name = env!("CARGO_PKG_NAME"),
+    version,
+    about = "现代快速、美观的 CLI / TUI 翻译与词典工具"
+)]
 pub struct CliArgs {
     /// 强制以句子模式进行 Google 翻译
     #[arg(short = 's', long = "sentence", help = "强制将输入作为整句进行翻译")]
@@ -16,10 +20,18 @@ pub struct CliArgs {
     pub proxy: Option<String>,
 
     /// 查看查询历史记录 (CLI 模式)
-    #[arg(long = "history", help = "显示最近的查询历史记录")]
+    #[arg(
+        long = "history",
+        conflicts_with = "show_favorites",
+        help = "显示最近的查询历史记录"
+    )]
     pub show_history: bool,
 
     /// 仅查看已收藏的生词记录
-    #[arg(long = "favorites", help = "仅显示收藏的生词")]
+    #[arg(
+        long = "favorites",
+        conflicts_with = "show_history",
+        help = "仅显示收藏的生词"
+    )]
     pub show_favorites: bool,
 }

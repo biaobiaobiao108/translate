@@ -1,16 +1,16 @@
-use colored::*;
 use crate::api::dict::{QueryOutput, WordDetail};
+use colored::*;
 
 // Tokyo Night TrueColor RGB Constants
-const TN_FG: (u8, u8, u8) = (192, 202, 245);         // #c0caf5 Main text
+const TN_FG: (u8, u8, u8) = (192, 202, 245); // #c0caf5 Main text
 const TN_TRANSLATION: (u8, u8, u8) = (169, 177, 214); // #a9b1d6 Readable secondary text / Example translation
-const TN_BLUE: (u8, u8, u8) = (122, 162, 247);       // #7aa2f7 Accent / Header text / English example
-const TN_CYAN: (u8, u8, u8) = (125, 207, 255);       // #7dcfff Phonetics / Numbers
-const TN_GREEN: (u8, u8, u8) = (158, 206, 106);      // #9ece6a Definitions header / Translated text
-const TN_MAGENTA: (u8, u8, u8) = (187, 154, 247);    // #bb9af7 Examples header / Badge text
-const TN_ORANGE: (u8, u8, u8) = (255, 158, 100);     // #ff9e64 POS tags (n., v.)
-const TN_SELECTION: (u8, u8, u8) = (40, 52, 73);     // #283449 Badge background
-const TN_BORDER: (u8, u8, u8) = (65, 72, 104);       // #414868 Divider line
+const TN_BLUE: (u8, u8, u8) = (122, 162, 247); // #7aa2f7 Accent / Header text / English example
+const TN_CYAN: (u8, u8, u8) = (125, 207, 255); // #7dcfff Phonetics / Numbers
+const TN_GREEN: (u8, u8, u8) = (158, 206, 106); // #9ece6a Definitions header / Translated text
+const TN_MAGENTA: (u8, u8, u8) = (187, 154, 247); // #bb9af7 Examples header / Badge text
+const TN_ORANGE: (u8, u8, u8) = (255, 158, 100); // #ff9e64 POS tags (n., v.)
+const TN_SELECTION: (u8, u8, u8) = (40, 52, 73); // #283449 Badge background
+const TN_BORDER: (u8, u8, u8) = (65, 72, 104); // #414868 Divider line
 
 fn format_section_title(label: &str, color: (u8, u8, u8)) -> String {
     format!(" {} ", label)
@@ -23,7 +23,12 @@ fn format_section_title(label: &str, color: (u8, u8, u8)) -> String {
 pub fn render_cli_output(output: &QueryOutput) {
     match output {
         QueryOutput::Dict(detail) => render_word_card(detail),
-        QueryOutput::Sentence { original, translated, detected_lang, target_lang } => {
+        QueryOutput::Sentence {
+            original,
+            translated,
+            detected_lang,
+            target_lang,
+        } => {
             render_sentence_card(original, translated, detected_lang, target_lang);
         }
     }
@@ -60,7 +65,9 @@ fn render_word_card(detail: &WordDetail) {
     println!();
 
     // 分割线 (#414868)
-    let divider = "─".repeat(58).truecolor(TN_BORDER.0, TN_BORDER.1, TN_BORDER.2);
+    let divider = "─"
+        .repeat(card_width())
+        .truecolor(TN_BORDER.0, TN_BORDER.1, TN_BORDER.2);
     println!("{}", divider);
 
     // 词性与释义
@@ -73,9 +80,11 @@ fn render_word_card(detail: &WordDetail) {
                 } else {
                     format!("{}.", def.pos)
                 };
-                format!("{:>6}", formatted_pos)
-                    .bold()
-                    .truecolor(TN_ORANGE.0, TN_ORANGE.1, TN_ORANGE.2)
+                format!("{:>6}", formatted_pos).bold().truecolor(
+                    TN_ORANGE.0,
+                    TN_ORANGE.1,
+                    TN_ORANGE.2,
+                )
             } else {
                 "      ".normal()
             };
@@ -103,7 +112,8 @@ fn render_word_card(detail: &WordDetail) {
             );
             println!(
                 "     {}",
-                eg.trans.truecolor(TN_TRANSLATION.0, TN_TRANSLATION.1, TN_TRANSLATION.2)
+                eg.trans
+                    .truecolor(TN_TRANSLATION.0, TN_TRANSLATION.1, TN_TRANSLATION.2)
             );
         }
     }
@@ -115,13 +125,19 @@ fn render_word_card(detail: &WordDetail) {
 fn render_sentence_card(original: &str, translated: &str, detected_lang: &str, target_lang: &str) {
     println!();
     // 胶囊徽章：[EN -> ZH] Google 翻译，背景色 #283449，文字加粗
-    let badge = format!("  [{} -> {}] Google 翻译  ", detected_lang.to_uppercase(), target_lang.to_uppercase())
-        .bold()
-        .truecolor(TN_MAGENTA.0, TN_MAGENTA.1, TN_MAGENTA.2)
-        .on_truecolor(TN_SELECTION.0, TN_SELECTION.1, TN_SELECTION.2);
+    let badge = format!(
+        "  [{} -> {}] Google 翻译  ",
+        detected_lang.to_uppercase(),
+        target_lang.to_uppercase()
+    )
+    .bold()
+    .truecolor(TN_MAGENTA.0, TN_MAGENTA.1, TN_MAGENTA.2)
+    .on_truecolor(TN_SELECTION.0, TN_SELECTION.1, TN_SELECTION.2);
     println!(" {}", badge);
 
-    let divider = "─".repeat(58).truecolor(TN_BORDER.0, TN_BORDER.1, TN_BORDER.2);
+    let divider = "─"
+        .repeat(card_width())
+        .truecolor(TN_BORDER.0, TN_BORDER.1, TN_BORDER.2);
     println!("{}", divider);
 
     for line in original.lines() {
@@ -138,4 +154,10 @@ fn render_sentence_card(original: &str, translated: &str, detected_lang: &str, t
 
     println!("{}", divider);
     println!();
+}
+
+fn card_width() -> usize {
+    crossterm::terminal::size()
+        .map(|(width, _)| usize::from(width).clamp(40, 120))
+        .unwrap_or(58)
 }

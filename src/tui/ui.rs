@@ -2,12 +2,10 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{
-        Block, BorderType, Borders, Clear, List, ListItem, Paragraph, Wrap,
-    },
+    widgets::{Block, BorderType, Borders, Clear, List, ListItem, Paragraph, Wrap},
     Frame,
 };
-use unicode_width::UnicodeWidthChar;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::api::dict::QueryOutput;
 use crate::tui::app::{App, FocusedPane, HistoryFilter, InputMode};
@@ -60,7 +58,9 @@ fn render_input_editor(f: &mut Frame, app: &mut App, area: Rect) {
 
     let title = Span::styled(
         title_text,
-        Style::default().fg(border_color).add_modifier(Modifier::BOLD),
+        Style::default()
+            .fg(border_color)
+            .add_modifier(Modifier::BOLD),
     );
 
     let input_block = Block::default()
@@ -75,14 +75,16 @@ fn render_input_editor(f: &mut Frame, app: &mut App, area: Rect) {
     app.textarea.set_cursor_line_style(Style::default());
     app.textarea.set_block(input_block);
     app.textarea.set_style(Style::default().fg(FG));
-    app.textarea.set_cursor_style(if is_focused && app.mode == InputMode::Insert {
-        Style::default().add_modifier(Modifier::REVERSED)
-    } else if is_focused && app.mode == InputMode::Normal {
-        Style::default().fg(CYAN).add_modifier(Modifier::UNDERLINED)
-    } else {
-        Style::default()
-    });
-    app.textarea.set_placeholder_style(Style::default().fg(COMMENT));
+    app.textarea
+        .set_cursor_style(if is_focused && app.mode == InputMode::Insert {
+            Style::default().add_modifier(Modifier::REVERSED)
+        } else if is_focused && app.mode == InputMode::Normal {
+            Style::default().fg(CYAN).add_modifier(Modifier::UNDERLINED)
+        } else {
+            Style::default()
+        });
+    app.textarea
+        .set_placeholder_style(Style::default().fg(COMMENT));
 
     f.render_widget(&app.textarea, area);
 
@@ -109,13 +111,9 @@ fn render_input_editor(f: &mut Frame, app: &mut App, area: Rect) {
     }
 }
 
-fn render_result_view(f: &mut Frame, app: &App, area: Rect) {
+fn render_result_view(f: &mut Frame, app: &mut App, area: Rect) {
     let is_focused = app.focused_pane == FocusedPane::Result;
-    let border_color = if is_focused {
-        BLUE
-    } else {
-        DARK_BORDER
-    };
+    let border_color = if is_focused { BLUE } else { DARK_BORDER };
 
     let title_text = if is_focused {
         " 📖 译文与词典对照 [NORMAL] "
@@ -127,7 +125,12 @@ fn render_result_view(f: &mut Frame, app: &App, area: Rect) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(border_color))
-        .title(Span::styled(title_text, Style::default().fg(border_color).add_modifier(Modifier::BOLD)));
+        .title(Span::styled(
+            title_text,
+            Style::default()
+                .fg(border_color)
+                .add_modifier(Modifier::BOLD),
+        ));
 
     if app.is_searching {
         let loading = Paragraph::new("\n\n  ⏳ 正在检索翻译与词典数据，请稍候...")
@@ -153,17 +156,26 @@ fn render_result_view(f: &mut Frame, app: &App, area: Rect) {
             let mut word_spans = vec![
                 Span::styled(
                     format!("  {}  ", detail.word),
-                    Style::default().fg(BLUE).bg(SELECTION).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(BLUE)
+                        .bg(SELECTION)
+                        .add_modifier(Modifier::BOLD),
                 ),
                 Span::raw("   "),
             ];
             if let Some(ref us) = detail.phonetic_us {
                 let clean = us.trim_matches(|c| c == '/' || c == '[' || c == ']' || c == ' ');
-                word_spans.push(Span::styled(format!("美 [{}]   ", clean), Style::default().fg(CYAN).add_modifier(Modifier::BOLD)));
+                word_spans.push(Span::styled(
+                    format!("美 [{}]   ", clean),
+                    Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+                ));
             }
             if let Some(ref uk) = detail.phonetic_uk {
                 let clean = uk.trim_matches(|c| c == '/' || c == '[' || c == ']' || c == ' ');
-                word_spans.push(Span::styled(format!("英 [{}]", clean), Style::default().fg(CYAN).add_modifier(Modifier::BOLD)));
+                word_spans.push(Span::styled(
+                    format!("英 [{}]", clean),
+                    Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+                ));
             }
             lines.push(Line::from(word_spans));
             lines.push(Line::from(""));
@@ -172,7 +184,10 @@ fn render_result_view(f: &mut Frame, app: &App, area: Rect) {
             if !detail.definitions.is_empty() {
                 lines.push(Line::from(Span::styled(
                     " 【词典释义】 ",
-                    Style::default().fg(GREEN).bg(SELECTION).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(GREEN)
+                        .bg(SELECTION)
+                        .add_modifier(Modifier::BOLD),
                 )));
                 for def in &detail.definitions {
                     let formatted_pos = if def.pos.ends_with('.') {
@@ -181,11 +196,15 @@ fn render_result_view(f: &mut Frame, app: &App, area: Rect) {
                         format!("{}.", def.pos)
                     };
                     let pos_span = if !def.pos.is_empty() {
-                        Span::styled(format!("    {:>5}  ", formatted_pos), Style::default().fg(ORANGE).add_modifier(Modifier::BOLD))
+                        Span::styled(
+                            format!("    {:>5}  ", formatted_pos),
+                            Style::default().fg(ORANGE).add_modifier(Modifier::BOLD),
+                        )
                     } else {
                         Span::styled("           ", Style::default())
                     };
-                    let meanings_span = Span::styled(def.meanings.join("；"), Style::default().fg(FG));
+                    let meanings_span =
+                        Span::styled(def.meanings.join("；"), Style::default().fg(FG));
                     lines.push(Line::from(vec![pos_span, meanings_span]));
                 }
             }
@@ -197,11 +216,17 @@ fn render_result_view(f: &mut Frame, app: &App, area: Rect) {
                 }
                 lines.push(Line::from(Span::styled(
                     " 【双语例句】 ",
-                    Style::default().fg(MAGENTA).bg(SELECTION).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(MAGENTA)
+                        .bg(SELECTION)
+                        .add_modifier(Modifier::BOLD),
                 )));
                 for (i, eg) in detail.examples.iter().enumerate() {
                     lines.push(Line::from(vec![
-                        Span::styled(format!("  {}. ", i + 1), Style::default().fg(BLUE).add_modifier(Modifier::BOLD)),
+                        Span::styled(
+                            format!("  {}. ", i + 1),
+                            Style::default().fg(BLUE).add_modifier(Modifier::BOLD),
+                        ),
                         Span::styled(&eg.orig, Style::default().fg(BLUE)),
                     ]));
                     lines.push(Line::from(vec![
@@ -211,64 +236,89 @@ fn render_result_view(f: &mut Frame, app: &App, area: Rect) {
                 }
             }
 
-            let paragraph = Paragraph::new(lines)
-                .block(block)
-                .wrap(Wrap { trim: false })
-                .scroll((app.result_scroll_offset, 0));
-            f.render_widget(paragraph, area);
+            let scroll_offset = app.result_scroll_offset;
+            app.result_scroll_offset =
+                render_scrolled_paragraph(f, area, block, lines, scroll_offset);
         }
-        Some(QueryOutput::Sentence { original: _, translated, detected_lang, target_lang }) => {
+        Some(QueryOutput::Sentence {
+            original: _,
+            translated,
+            detected_lang,
+            target_lang,
+        }) => {
             let mut lines = Vec::new();
             // 对齐 HTML: [EN -> ZH] Google 翻译 胶囊标签 (背景 #283449, 文字 #bb9af7)
-            lines.push(Line::from(vec![
-                Span::styled(
-                    format!("  [{} -> {}] Google 翻译  ", detected_lang.to_uppercase(), target_lang.to_uppercase()),
-                    Style::default().fg(MAGENTA).bg(SELECTION).add_modifier(Modifier::BOLD),
+            lines.push(Line::from(vec![Span::styled(
+                format!(
+                    "  [{} -> {}] Google 翻译  ",
+                    detected_lang.to_uppercase(),
+                    target_lang.to_uppercase()
                 ),
-            ]));
+                Style::default()
+                    .fg(MAGENTA)
+                    .bg(SELECTION)
+                    .add_modifier(Modifier::BOLD),
+            )]));
             lines.push(Line::from(""));
 
             // 对齐 HTML: 纯粹高亮绿色输出译文，去除冗余标签
             for line in translated.lines() {
-                lines.push(Line::from(Span::styled(format!("  {}", line), Style::default().fg(GREEN).add_modifier(Modifier::BOLD))));
+                lines.push(Line::from(Span::styled(
+                    format!("  {}", line),
+                    Style::default().fg(GREEN).add_modifier(Modifier::BOLD),
+                )));
             }
 
-            let paragraph = Paragraph::new(lines)
-                .block(block)
-                .wrap(Wrap { trim: false })
-                .scroll((app.result_scroll_offset, 0));
-            f.render_widget(paragraph, area);
+            let scroll_offset = app.result_scroll_offset;
+            app.result_scroll_offset =
+                render_scrolled_paragraph(f, area, block, lines, scroll_offset);
         }
         None => {
             // 优雅低调的 Tokyo Night 占位提示：采用柔和灰蓝 (#787c99) 与次级灰 (#565f89)
-            let mut lines = Vec::new();
-            lines.push(Line::from(""));
-            lines.push(Line::from(Span::styled(
-                "  💡 在左栏输入要查询的内容，按 Enter 即刻呈现：",
-                Style::default().fg(COMMENT),
-            )));
-            lines.push(Line::from(""));
-            lines.push(Line::from(vec![
-                Span::styled("  • 单词精查：", Style::default().fg(COMMENT)),
-                Span::styled("英美权威双音标、词性分类释义与权威双语例句", Style::default().fg(MUTED_TEXT)),
-            ]));
-            lines.push(Line::from(vec![
-                Span::styled("  • 长句互译：", Style::default().fg(COMMENT)),
-                Span::styled("Google 翻译智能检测语种，支持 50+ 行大段长文对照", Style::default().fg(MUTED_TEXT)),
-            ]));
-            lines.push(Line::from(vec![
-                Span::styled("  • 双栏模式：", Style::default().fg(COMMENT)),
-                Span::styled("Normal / Insert 双模式，支持 Vim 式平滑上下滚动", Style::default().fg(MUTED_TEXT)),
-            ]));
-            lines.push(Line::from(vec![
-                Span::styled("  • 生词历史：", Style::default().fg(COMMENT)),
-                Span::styled("随时按 h 呼出生词抽屉，支持一键收藏、管理与重查", Style::default().fg(MUTED_TEXT)),
-            ]));
-            lines.push(Line::from(""));
-            lines.push(Line::from(vec![
-                Span::styled("  快捷操作：", Style::default().fg(COMMENT)),
-                Span::styled("i 开始输入 | Esc 导航 | Tab 切栏 | y 复制译文 | q 退出 | ? 帮助", Style::default().fg(MUTED_TEXT)),
-            ]));
+            let lines = vec![
+                Line::from(""),
+                Line::from(Span::styled(
+                    "  💡 在左栏输入要查询的内容，按 Enter 即刻呈现：",
+                    Style::default().fg(COMMENT),
+                )),
+                Line::from(""),
+                Line::from(vec![
+                    Span::styled("  • 单词精查：", Style::default().fg(COMMENT)),
+                    Span::styled(
+                        "英美权威双音标、词性分类释义与权威双语例句",
+                        Style::default().fg(MUTED_TEXT),
+                    ),
+                ]),
+                Line::from(vec![
+                    Span::styled("  • 长句互译：", Style::default().fg(COMMENT)),
+                    Span::styled(
+                        "Google 翻译智能检测语种，支持 50+ 行大段长文对照",
+                        Style::default().fg(MUTED_TEXT),
+                    ),
+                ]),
+                Line::from(vec![
+                    Span::styled("  • 双栏模式：", Style::default().fg(COMMENT)),
+                    Span::styled(
+                        "Normal / Insert 双模式，支持 Vim 式平滑上下滚动",
+                        Style::default().fg(MUTED_TEXT),
+                    ),
+                ]),
+                Line::from(vec![
+                    Span::styled("  • 生词历史：", Style::default().fg(COMMENT)),
+                    Span::styled(
+                        "随时按 h 呼出生词抽屉，支持一键收藏、管理与重查",
+                        Style::default().fg(MUTED_TEXT),
+                    ),
+                ]),
+                Line::from(""),
+                Line::from(vec![
+                    Span::styled("  快捷操作：", Style::default().fg(COMMENT)),
+                    Span::styled(
+                        "i 开始输入 | Esc 导航 | Tab 切栏 | y 复制译文 | q 退出 | ? 帮助",
+                        Style::default().fg(MUTED_TEXT),
+                    ),
+                ]),
+            ];
 
             let paragraph = Paragraph::new(lines)
                 .block(block)
@@ -276,6 +326,26 @@ fn render_result_view(f: &mut Frame, app: &App, area: Rect) {
             f.render_widget(paragraph, area);
         }
     }
+}
+
+fn render_scrolled_paragraph<'a>(
+    f: &mut Frame,
+    area: Rect,
+    block: Block<'a>,
+    lines: Vec<Line<'a>>,
+    scroll_offset: u16,
+) -> u16 {
+    let viewport = block.inner(area);
+    let paragraph = Paragraph::new(lines).wrap(Wrap { trim: false });
+    let max_scroll = paragraph
+        .line_count(viewport.width.max(1))
+        .saturating_sub(viewport.height as usize)
+        .min(u16::MAX as usize) as u16;
+    let scroll_offset = scroll_offset.min(max_scroll);
+
+    let paragraph = paragraph.block(block).scroll((scroll_offset, 0));
+    f.render_widget(paragraph, area);
+    scroll_offset
 }
 
 fn render_history_drawer(f: &mut Frame, app: &App) {
@@ -291,7 +361,10 @@ fn render_history_drawer(f: &mut Frame, app: &App) {
         .borders(Borders::ALL)
         .border_type(BorderType::Double)
         .border_style(Style::default().fg(PURPLE))
-        .title(Span::styled(filter_title, Style::default().fg(PURPLE).add_modifier(Modifier::BOLD)));
+        .title(Span::styled(
+            filter_title,
+            Style::default().fg(PURPLE).add_modifier(Modifier::BOLD),
+        ));
 
     let items: Vec<ListItem> = app
         .history_items
@@ -302,11 +375,19 @@ fn render_history_drawer(f: &mut Frame, app: &App) {
             let fav_icon = if item.is_favorite { "★ " } else { "  " };
             let prefix = if is_selected { "▶ " } else { "  " };
 
+            let query = single_line(&item.query);
+            let query = truncate_display_width(&query, 20);
+            let query_padding =
+                " ".repeat(20usize.saturating_sub(UnicodeWidthStr::width(query.as_str())));
+
             let mut spans = vec![
-                Span::styled(prefix, Style::default().fg(CYAN).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    prefix,
+                    Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+                ),
                 Span::styled(fav_icon, Style::default().fg(YELLOW)),
                 Span::styled(
-                    format!("{:<20}", item.query),
+                    format!("{}{}", query, query_padding),
                     if is_selected {
                         Style::default().fg(CYAN).add_modifier(Modifier::BOLD)
                     } else {
@@ -316,11 +397,10 @@ fn render_history_drawer(f: &mut Frame, app: &App) {
             ];
 
             if !item.result_summary.is_empty() {
-                let short_summary = if item.result_summary.chars().count() > 36 {
-                    format!("  {}...", item.result_summary.chars().take(36).collect::<String>())
-                } else {
-                    format!("  {}", item.result_summary)
-                };
+                let short_summary = format!(
+                    "  {}",
+                    truncate_display_width(&single_line(&item.result_summary), 36)
+                );
                 spans.push(Span::styled(short_summary, Style::default().fg(COMMENT)));
             }
 
@@ -339,38 +419,74 @@ fn render_status_bar(f: &mut Frame, app: &App, area: Rect) {
     if let Some(toast) = app.get_active_toast() {
         spans.push(Span::styled(
             format!(" {} ", toast),
-            Style::default().fg(ratatui::style::Color::Black).bg(YELLOW).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(ratatui::style::Color::Black)
+                .bg(YELLOW)
+                .add_modifier(Modifier::BOLD),
         ));
         spans.push(Span::raw(" "));
     }
 
     // 2. 模式与按键提示
     if app.show_history_drawer {
-        spans.push(Span::styled(" [历史抽屉] ", Style::default().fg(ratatui::style::Color::Black).bg(PURPLE).add_modifier(Modifier::BOLD)));
+        spans.push(Span::styled(
+            " [历史抽屉] ",
+            Style::default()
+                .fg(ratatui::style::Color::Black)
+                .bg(PURPLE)
+                .add_modifier(Modifier::BOLD),
+        ));
         spans.push(Span::raw(" "));
-        spans.push(Span::styled("j/k: 浏览 | Enter: 重新查询 | f: 收藏 | d: 删除 | c: 过滤 | Esc/q/h: 关闭", Style::default().fg(FG)));
+        spans.push(Span::styled(
+            "j/k: 浏览 | Enter: 重新查询 | f: 收藏 | d: 删除 | c: 过滤 | Esc/q/h: 关闭",
+            Style::default().fg(FG),
+        ));
     } else {
         match app.mode {
             InputMode::Insert => {
-                spans.push(Span::styled(" [INSERT] ", Style::default().fg(ratatui::style::Color::Black).bg(GREEN).add_modifier(Modifier::BOLD)));
+                spans.push(Span::styled(
+                    " [INSERT] ",
+                    Style::default()
+                        .fg(ratatui::style::Color::Black)
+                        .bg(GREEN)
+                        .add_modifier(Modifier::BOLD),
+                ));
                 spans.push(Span::raw(" "));
-                spans.push(Span::styled("Esc: 退出编辑(Normal) | Enter: 翻译 | Shift+Enter: 换行 | Tab: 切换至译文", Style::default().fg(FG)));
+                spans.push(Span::styled(
+                    "Esc: 退出编辑(Normal) | Enter: 翻译 | Shift+Enter: 换行 | Tab: 切换至译文",
+                    Style::default().fg(FG),
+                ));
                 spans.push(Span::raw("  |  "));
-                spans.push(Span::styled("Ctrl+C: 强制退出", Style::default().fg(COMMENT)));
+                spans.push(Span::styled(
+                    "Ctrl+C: 强制退出",
+                    Style::default().fg(COMMENT),
+                ));
             }
             InputMode::Normal => {
-                spans.push(Span::styled(" [NORMAL] ", Style::default().fg(ratatui::style::Color::Black).bg(BLUE).add_modifier(Modifier::BOLD)));
+                spans.push(Span::styled(
+                    " [NORMAL] ",
+                    Style::default()
+                        .fg(ratatui::style::Color::Black)
+                        .bg(BLUE)
+                        .add_modifier(Modifier::BOLD),
+                ));
                 spans.push(Span::raw(" "));
                 match app.focused_pane {
                     FocusedPane::Input => {
                         spans.push(Span::styled("i/a: 编辑 | c: 清空并输入 | x: 清空 | Tab: 译文区 | y: 复制 | Enter: 翻译", Style::default().fg(FG)));
                     }
                     FocusedPane::Result => {
-                        spans.push(Span::styled("j/k: 滚动 | g/G: 顶/底 | i: 编辑原文 | Tab: 切回输入 | y: 复制", Style::default().fg(FG)));
+                        spans.push(Span::styled(
+                            "j/k: 滚动 | g/G: 顶/底 | i: 编辑原文 | Tab: 切回输入 | y: 复制",
+                            Style::default().fg(FG),
+                        ));
                     }
                 }
                 spans.push(Span::raw("  |  "));
-                spans.push(Span::styled("h: 历史  ?: 帮助  q: 退出", Style::default().fg(YELLOW).add_modifier(Modifier::BOLD)));
+                spans.push(Span::styled(
+                    "h: 历史  ?: 帮助  q: 退出",
+                    Style::default().fg(YELLOW).add_modifier(Modifier::BOLD),
+                ));
             }
         }
     }
@@ -380,7 +496,7 @@ fn render_status_bar(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn render_help_popup(f: &mut Frame) {
-    let area = centered_rect(72, 75, f.area());
+    let area = centered_rect(90, 90, f.area());
     f.render_widget(Clear, area);
 
     let block = Block::default()
@@ -390,37 +506,236 @@ fn render_help_popup(f: &mut Frame) {
         .border_style(Style::default().fg(YELLOW));
 
     let help_text = vec![
-        Line::from(Span::styled("【 INSERT 输入模式 】", Style::default().fg(GREEN).add_modifier(Modifier::BOLD))),
-        Line::from(vec![Span::styled("  键盘打字       ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : 直接输入原文，终端硬件光标精准跟随输入法 (IME)", Style::default().fg(FG))]),
-        Line::from(vec![Span::styled("  Esc            ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : 退出编辑，切换至 [NORMAL] 导航模式", Style::default().fg(FG))]),
-        Line::from(vec![Span::styled("  Enter          ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : 执行翻译当前内容（翻译完成后自动切回 Normal 模式）", Style::default().fg(FG))]),
-        Line::from(vec![Span::styled("  Shift+Enter    ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : (或 Ctrl+J) 在输入框中正常换行", Style::default().fg(FG))]),
-        Line::from(vec![Span::styled("  Tab            ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : 切换焦点至译文区并转入 Normal 模式", Style::default().fg(FG))]),
+        Line::from(Span::styled(
+            "【 INSERT 输入模式 】",
+            Style::default().fg(GREEN).add_modifier(Modifier::BOLD),
+        )),
+        Line::from(vec![
+            Span::styled(
+                "  键盘打字       ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                " : 直接输入原文，终端硬件光标精准跟随输入法 (IME)",
+                Style::default().fg(FG),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  Esc            ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                " : 退出编辑，切换至 [NORMAL] 导航模式",
+                Style::default().fg(FG),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  Enter          ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                " : 执行翻译当前内容（翻译完成后自动切回 Normal 模式）",
+                Style::default().fg(FG),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  Shift+Enter    ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" : (或 Ctrl+J) 在输入框中正常换行", Style::default().fg(FG)),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  Tab            ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                " : 切换焦点至译文区并转入 Normal 模式",
+                Style::default().fg(FG),
+            ),
+        ]),
         Line::from(""),
-        Line::from(Span::styled("【 NORMAL 导航模式 】", Style::default().fg(BLUE).add_modifier(Modifier::BOLD))),
-        Line::from(vec![Span::styled("  i / a          ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : 进入 [INSERT] 模式开始编辑输入", Style::default().fg(FG))]),
-        Line::from(vec![Span::styled("  c              ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : 一键清空输入框并自动进入 [INSERT] 模式", Style::default().fg(FG))]),
-        Line::from(vec![Span::styled("  x              ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : 清空输入框内容（保持 Normal 模式）", Style::default().fg(FG))]),
-        Line::from(vec![Span::styled("  Tab / ← / →    ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : 在 [原文输入区] 与 [译文对照区] 之间切换焦点", Style::default().fg(FG))]),
-        Line::from(vec![Span::styled("  j / k          ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : 原文区移动光标行 / 译文区平滑单行滚动", Style::default().fg(FG))]),
-        Line::from(vec![Span::styled("  g / G          ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : (译文区) 直达顶部 / 底部", Style::default().fg(FG))]),
-        Line::from(vec![Span::styled("  d / u          ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : (译文区) 向下翻页 / 向上翻页 (PageUp/PageDn 同效)", Style::default().fg(FG))]),
-        Line::from(vec![Span::styled("  y              ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : 一键复制译文内容到系统剪贴板", Style::default().fg(FG))]),
-        Line::from(vec![Span::styled("  h              ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : 打开 / 关闭 [历史记录与生词本抽屉]", Style::default().fg(FG))]),
-        Line::from(vec![Span::styled("  ?              ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : 打开快捷键指南弹窗", Style::default().fg(FG))]),
-        Line::from(vec![Span::styled("  q              ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : 安全退出应用", Style::default().fg(FG))]),
+        Line::from(Span::styled(
+            "【 NORMAL 导航模式 】",
+            Style::default().fg(BLUE).add_modifier(Modifier::BOLD),
+        )),
+        Line::from(vec![
+            Span::styled(
+                "  i / a          ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" : 进入 [INSERT] 模式开始编辑输入", Style::default().fg(FG)),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  c              ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                " : 一键清空输入框并自动进入 [INSERT] 模式",
+                Style::default().fg(FG),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  x              ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                " : 清空输入框内容（保持 Normal 模式）",
+                Style::default().fg(FG),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  Tab / ← / →    ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                " : 在 [原文输入区] 与 [译文对照区] 之间切换焦点",
+                Style::default().fg(FG),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  j / k          ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                " : 原文区移动光标行 / 译文区平滑单行滚动",
+                Style::default().fg(FG),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  g / G          ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" : (译文区) 直达顶部 / 底部", Style::default().fg(FG)),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  d / u          ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                " : (译文区) 向下翻页 / 向上翻页 (PageUp/PageDn 同效)",
+                Style::default().fg(FG),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  y              ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" : 一键复制译文内容到系统剪贴板", Style::default().fg(FG)),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  h              ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                " : 打开 / 关闭 [历史记录与生词本抽屉]",
+                Style::default().fg(FG),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  ?              ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" : 打开快捷键指南弹窗", Style::default().fg(FG)),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  q              ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" : 安全退出应用", Style::default().fg(FG)),
+        ]),
         Line::from(""),
-        Line::from(Span::styled("【 历史与生词抽屉 】", Style::default().fg(PURPLE).add_modifier(Modifier::BOLD))),
-        Line::from(vec![Span::styled("  j / k / ↑ / ↓  ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : 上下浏览历史条目", Style::default().fg(FG))]),
-        Line::from(vec![Span::styled("  Enter          ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : 将选中条目填入输入框并即刻查询", Style::default().fg(FG))]),
-        Line::from(vec![Span::styled("  f              ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : 收藏 / 取消收藏当前条目", Style::default().fg(FG))]),
-        Line::from(vec![Span::styled("  d              ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : 从数据库中删除当前条目", Style::default().fg(FG))]),
-        Line::from(vec![Span::styled("  c              ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : 切换 [全部历史] 与 [⭐ 生词本]", Style::default().fg(FG))]),
-        Line::from(vec![Span::styled("  Esc / q / h    ", Style::default().fg(CYAN).add_modifier(Modifier::BOLD)), Span::styled(" : 关闭抽屉返回主界面", Style::default().fg(FG))]),
+        Line::from(Span::styled(
+            "【 历史与生词抽屉 】",
+            Style::default().fg(PURPLE).add_modifier(Modifier::BOLD),
+        )),
+        Line::from(vec![
+            Span::styled(
+                "  j / k / ↑ / ↓  ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" : 上下浏览历史条目", Style::default().fg(FG)),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  Enter          ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" : 将选中条目填入输入框并即刻查询", Style::default().fg(FG)),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  f              ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" : 收藏 / 取消收藏当前条目", Style::default().fg(FG)),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  d              ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" : 从数据库中删除当前条目", Style::default().fg(FG)),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  c              ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" : 切换 [全部历史] 与 [⭐ 生词本]", Style::default().fg(FG)),
+        ]),
+        Line::from(vec![
+            Span::styled(
+                "  Esc / q / h    ",
+                Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" : 关闭抽屉返回主界面", Style::default().fg(FG)),
+        ]),
     ];
 
-    let p = Paragraph::new(help_text).block(block);
+    let p = Paragraph::new(help_text)
+        .wrap(Wrap { trim: false })
+        .block(block);
     f.render_widget(p, area);
+}
+
+fn single_line(text: &str) -> String {
+    text.replace(['\r', '\n'], " ")
+}
+
+fn truncate_display_width(text: &str, max_width: usize) -> String {
+    if UnicodeWidthStr::width(text) <= max_width {
+        return text.to_string();
+    }
+    if max_width == 0 {
+        return String::new();
+    }
+
+    let mut result = String::new();
+    let mut width = 0;
+    for ch in text.chars() {
+        let char_width = UnicodeWidthChar::width(ch).unwrap_or(0);
+        if width + char_width > max_width.saturating_sub(1) {
+            break;
+        }
+        result.push(ch);
+        width += char_width;
+    }
+    result.push('…');
+    result
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {

@@ -1,3 +1,3 @@
 pub mod client;
-pub mod google;
 pub mod dict;
+pub mod google;

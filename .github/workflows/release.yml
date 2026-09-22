@@ -99,6 +99,7 @@ jobs:
           mkdir -p release_dist
           find artifacts -type f -name "tran-*" -exec cp {} release_dist/ \;
           chmod +x release_dist/tran-* || true
+          sha256sum release_dist/tran-* > release_dist/SHA256SUMS
           ls -la release_dist
 
       - name: Create GitHub Release

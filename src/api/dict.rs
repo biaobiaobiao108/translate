@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use reqwest::Client;
-use crate::error::{AppError, Result};
 use crate::api::google::translate_text;
+use crate::error::{AppError, Result};
+use reqwest::Client;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Example {
@@ -36,18 +36,84 @@ pub enum QueryOutput {
     },
 }
 
+impl QueryOutput {
+    pub fn summary(&self) -> String {
+        match self {
+            QueryOutput::Dict(detail) => detail
+                .definitions
+                .iter()
+                .map(|definition| format!("{}{}", definition.pos, definition.meanings.join(" ")))
+                .collect::<Vec<_>>()
+                .join(" "),
+            QueryOutput::Sentence { translated, .. } => translated.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct YoudaoResponse {
+    ec: Option<YoudaoEc>,
+    #[serde(rename = "blng_sents_part")]
+    bilingual_sentences: Option<BilingualSentences>,
+}
+
+#[derive(Debug, Deserialize)]
+struct YoudaoEc {
+    exam_type: Option<Vec<String>>,
+    word: Option<Vec<YoudaoWord>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct YoudaoWord {
+    usphone: Option<String>,
+    ukphone: Option<String>,
+    trs: Option<Vec<YoudaoTranslation>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct YoudaoTranslation {
+    tr: Option<Vec<YoudaoTranslationPart>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct YoudaoTranslationPart {
+    l: Option<YoudaoLanguagePart>,
+}
+
+#[derive(Debug, Deserialize)]
+struct YoudaoLanguagePart {
+    i: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct BilingualSentences {
+    #[serde(rename = "sentence-pair")]
+    sentence_pair: Option<Vec<BilingualSentence>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct BilingualSentence {
+    sentence: Option<String>,
+    #[serde(rename = "sentence-translation")]
+    translation: Option<String>,
+}
+
 pub async fn fetch_dict_detail(client: &Client, word: &str) -> Result<WordDetail> {
     let url = "https://dict.youdao.com/jsonapi";
     let resp = client
         .get(url)
         .query(&[
             ("q", word),
-            ("dicts", "{\"count\":2,\"dicts\":[[\"ec\"],[\"blng_sents_part\"]]}"),
+            (
+                "dicts",
+                "{\"count\":2,\"dicts\":[[\"ec\"],[\"blng_sents_part\"]]}",
+            ),
         ])
         .send()
-        .await?;
+        .await?
+        .error_for_status()?;
 
-    let json: serde_json::Value = resp.json().await?;
+    let json: YoudaoResponse = resp.json().await?;
 
     let mut us_phone = None;
     let mut uk_phone = None;
@@ -56,53 +122,35 @@ pub async fn fetch_dict_detail(client: &Client, word: &str) -> Result<WordDetail
     let mut examples = Vec::new();
 
     // 提取 ec (英汉释义和音标)
-    if let Some(ec) = json.get("ec") {
-        if let Some(exam_types) = ec.get("exam_type").and_then(|t| t.as_array()) {
-            for t in exam_types {
-                if let Some(s) = t.as_str() {
-                    tags.push(s.to_string());
-                }
-            }
+    if let Some(ec) = json.ec {
+        if let Some(exam_types) = ec.exam_type {
+            tags.extend(exam_types);
         }
 
-        if let Some(word_arr) = ec.get("word").and_then(|w| w.as_array()) {
-            if let Some(w) = word_arr.first() {
-                if let Some(us) = w.get("usphone").and_then(|p| p.as_str()) {
-                    if !us.is_empty() {
-                        us_phone = Some(format!("/ {} /", us));
-                    }
-                }
-                if let Some(uk) = w.get("ukphone").and_then(|p| p.as_str()) {
-                    if !uk.is_empty() {
-                        uk_phone = Some(format!("/ {} /", uk));
-                    }
-                }
+        if let Some(word) = ec.word.and_then(|words| words.into_iter().next()) {
+            if let Some(us) = word.usphone.filter(|phone| !phone.is_empty()) {
+                us_phone = Some(format!("/ {} /", us));
+            }
+            if let Some(uk) = word.ukphone.filter(|phone| !phone.is_empty()) {
+                uk_phone = Some(format!("/ {} /", uk));
+            }
 
-                if let Some(trs) = w.get("trs").and_then(|t| t.as_array()) {
-                    for tr in trs {
-                        if let Some(tr_sub) = tr.get("tr").and_then(|t| t.as_array()) {
-                            for sub in tr_sub {
-                                if let Some(i_arr) = sub.get("l").and_then(|l| l.get("i")).and_then(|i| i.as_array()) {
-                                    for i_val in i_arr {
-                                        if let Some(line) = i_val.as_str() {
-                                            let trimmed = line.trim();
-                                            if let Some(dot_idx) = trimmed.find('.') {
-                                                let pos = &trimmed[..=dot_idx];
-                                                let mean = trimmed[dot_idx + 1..].trim();
-                                                definitions.push(DefinitionGroup {
-                                                    pos: pos.to_string(),
-                                                    meanings: vec![mean.to_string()],
-                                                });
-                                            } else {
-                                                definitions.push(DefinitionGroup {
-                                                    pos: "".to_string(),
-                                                    meanings: vec![trimmed.to_string()],
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+            for translation in word.trs.unwrap_or_default() {
+                for part in translation.tr.unwrap_or_default() {
+                    for line in part.l.and_then(|language| language.i).unwrap_or_default() {
+                        let trimmed = line.trim();
+                        if let Some(dot_idx) = trimmed.find('.') {
+                            let pos = &trimmed[..=dot_idx];
+                            let meaning = trimmed[dot_idx + 1..].trim();
+                            definitions.push(DefinitionGroup {
+                                pos: pos.to_string(),
+                                meanings: vec![meaning.to_string()],
+                            });
+                        } else {
+                            definitions.push(DefinitionGroup {
+                                pos: String::new(),
+                                meanings: vec![trimmed.to_string()],
+                            });
                         }
                     }
                 }
@@ -111,11 +159,14 @@ pub async fn fetch_dict_detail(client: &Client, word: &str) -> Result<WordDetail
     }
 
     // 提取双语例句
-    if let Some(blng) = json.get("blng_sents_part") {
-        if let Some(pair_arr) = blng.get("sentence-pair").and_then(|p| p.as_array()) {
-            for pair in pair_arr.iter().take(3) {
-                let orig = pair.get("sentence").and_then(|s| s.as_str()).unwrap_or("");
-                let trans = pair.get("sentence-translation").and_then(|s| s.as_str()).unwrap_or("");
+    if let Some(sentences) = json.bilingual_sentences {
+        for pair in sentences
+            .sentence_pair
+            .unwrap_or_default()
+            .into_iter()
+            .take(3)
+        {
+            if let (Some(orig), Some(trans)) = (pair.sentence, pair.translation) {
                 if !orig.is_empty() && !trans.is_empty() {
                     examples.push(Example {
                         orig: orig.to_string(),
@@ -127,7 +178,7 @@ pub async fn fetch_dict_detail(client: &Client, word: &str) -> Result<WordDetail
     }
 
     if definitions.is_empty() {
-        return Err(AppError::General("未能在词典中找到该词条".to_string()));
+        return Err(AppError::NotFound(word.to_string()));
     }
 
     Ok(WordDetail {
@@ -140,18 +191,28 @@ pub async fn fetch_dict_detail(client: &Client, word: &str) -> Result<WordDetail
     })
 }
 
-pub async fn smart_query(client: &Client, query: &str, force_sentence: bool) -> Result<QueryOutput> {
+pub async fn smart_query(
+    client: &Client,
+    query: &str,
+    force_sentence: bool,
+) -> Result<QueryOutput> {
     let trimmed = query.trim();
     if trimmed.is_empty() {
-        return Err(AppError::General("查询内容不能为空".to_string()));
+        return Err(AppError::InvalidInput("查询内容不能为空".to_string()));
     }
 
-    let word_count = trimmed.split_whitespace().count();
-    let is_single_word = word_count <= 2 && !trimmed.contains('\n') && !trimmed.ends_with('.') && !trimmed.ends_with('。');
+    let is_dictionary_query = !force_sentence
+        && trimmed.chars().count() <= 64
+        && !trimmed.chars().any(|c| c.is_whitespace())
+        && trimmed
+            .chars()
+            .all(|c| c.is_alphabetic() || matches!(c, '-' | '\'' | '’'));
 
-    if !force_sentence && is_single_word {
-        if let Ok(detail) = fetch_dict_detail(client, trimmed).await {
-            return Ok(QueryOutput::Dict(detail));
+    if is_dictionary_query {
+        match fetch_dict_detail(client, trimmed).await {
+            Ok(detail) => return Ok(QueryOutput::Dict(detail)),
+            Err(AppError::NotFound(_)) => {}
+            Err(error) => return Err(error),
         }
     }
 

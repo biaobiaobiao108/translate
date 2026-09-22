@@ -1,8 +1,15 @@
+use std::collections::{HashMap, VecDeque};
+use std::time::{Duration, Instant};
+
 use reqwest::Client;
+use tokio::sync::oneshot;
 use tui_textarea::TextArea;
 use unicode_width::UnicodeWidthChar;
-use crate::api::dict::{smart_query, QueryOutput};
+
+use crate::api::dict::QueryOutput;
 use crate::db::{Database, HistoryItem};
+
+const QUERY_CACHE_CAPACITY: usize = 32;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum FocusedPane {
@@ -22,6 +29,13 @@ pub enum HistoryFilter {
     Favorites,
 }
 
+pub struct SearchRequest {
+    pub request_id: u64,
+    pub query: String,
+    pub client: Client,
+    pub cancel: oneshot::Receiver<()>,
+}
+
 pub struct App<'a> {
     pub should_quit: bool,
     pub mode: InputMode,
@@ -31,7 +45,7 @@ pub struct App<'a> {
     pub current_result: Option<QueryOutput>,
     pub error_message: Option<String>,
     pub result_scroll_offset: u16,
-    pub toast_message: Option<(String, std::time::Instant)>,
+    pub toast_message: Option<(String, Instant)>,
 
     // 历史与生词抽屉
     pub show_history_drawer: bool,
@@ -42,13 +56,21 @@ pub struct App<'a> {
     pub show_help: bool,
     pub db: Database,
     pub client: Client,
+    next_search_id: u64,
+    active_search_id: Option<u64>,
+    active_search_cancel: Option<oneshot::Sender<()>>,
+    query_cache: HashMap<String, QueryOutput>,
+    query_cache_order: VecDeque<String>,
 }
 
 impl<'a> App<'a> {
     pub fn new(client: Client, db: Database) -> Self {
-        let history = db.list_history(false, 100).unwrap_or_default();
+        let (history, history_error) = match db.list_history(false, 100) {
+            Ok(items) => (items, None),
+            Err(error) => (Vec::new(), Some(format!("历史记录加载失败: {}", error))),
+        };
         let mut textarea = TextArea::default();
-        textarea.set_placeholder_text("在此输入要翻译的内容，按 Enter 即刻翻译...");
+        set_placeholder(&mut textarea);
 
         Self {
             should_quit: false,
@@ -59,7 +81,7 @@ impl<'a> App<'a> {
             current_result: None,
             error_message: None,
             result_scroll_offset: 0,
-            toast_message: None,
+            toast_message: history_error.map(|error| (error, Instant::now())),
             show_history_drawer: false,
             history_items: history,
             history_selected_index: 0,
@@ -67,6 +89,11 @@ impl<'a> App<'a> {
             show_help: false,
             db,
             client,
+            next_search_id: 0,
+            active_search_id: None,
+            active_search_cancel: None,
+            query_cache: HashMap::new(),
+            query_cache_order: VecDeque::new(),
         }
     }
 
@@ -74,25 +101,31 @@ impl<'a> App<'a> {
         self.textarea.lines().join("\n")
     }
 
-    pub fn set_input_string(&mut self, s: &str) {
-        let lines: Vec<String> = s.lines().map(|l| l.to_string()).collect();
-        let lines = if lines.is_empty() { vec![String::new()] } else { lines };
+    pub fn set_input_string(&mut self, text: &str) {
+        let normalized = text.replace("\r\n", "\n").replace('\r', "\n");
+        let lines = normalized
+            .split('\n')
+            .map(ToString::to_string)
+            .collect::<Vec<_>>();
         self.textarea = TextArea::new(lines);
         self.textarea.move_cursor(tui_textarea::CursorMove::Bottom);
         self.textarea.move_cursor(tui_textarea::CursorMove::End);
     }
 
-    /// 插入字符并检查是否达到行末宽度，实现平滑自动换行
+    /// 插入字符并检查是否达到行末宽度，实现平滑自动换行。
     pub fn insert_char_with_wrap(&mut self, c: char, max_width: u16) {
         if max_width > 4 {
             let (cursor_row, cursor_col) = self.textarea.cursor();
             if let Some(line) = self.textarea.lines().get(cursor_row) {
-                let mut current_line_width = 0u16;
-                for ch in line.chars().take(cursor_col) {
-                    current_line_width += UnicodeWidthChar::width(ch).unwrap_or(0) as u16;
-                }
+                let current_line_width = line
+                    .chars()
+                    .take(cursor_col)
+                    .map(|ch| UnicodeWidthChar::width(ch).unwrap_or(0) as u16)
+                    .sum::<u16>();
                 let char_width = UnicodeWidthChar::width(c).unwrap_or(0) as u16;
-                if current_line_width + char_width >= max_width {
+                if current_line_width > 0
+                    && current_line_width.saturating_add(char_width) > max_width
+                {
                     self.textarea.insert_newline();
                 }
             }
@@ -100,24 +133,26 @@ impl<'a> App<'a> {
         self.textarea.insert_char(c);
     }
 
-    pub fn paste_text(&mut self, text: &str) {
-        let mut lines = text.split('\n').peekable();
-        while let Some(line) = lines.next() {
-            let clean = line.trim_end_matches('\r');
-            self.textarea.insert_str(clean);
-            if lines.peek().is_some() {
-                self.textarea.insert_newline();
+    pub fn paste_text(&mut self, text: &str, max_width: u16) {
+        for c in text.chars() {
+            match c {
+                '\r' => {}
+                '\n' => self.textarea.insert_newline(),
+                _ => self.insert_char_with_wrap(c, max_width),
             }
         }
     }
 
     pub fn reload_history(&mut self) {
-        let only_fav = self.history_filter == HistoryFilter::Favorites;
-        if let Ok(items) = self.db.list_history(only_fav, 100) {
-            self.history_items = items;
-            if self.history_selected_index >= self.history_items.len() {
-                self.history_selected_index = self.history_items.len().saturating_sub(1);
+        let only_favorites = self.history_filter == HistoryFilter::Favorites;
+        match self.db.list_history(only_favorites, 100) {
+            Ok(items) => {
+                self.history_items = items;
+                if self.history_selected_index >= self.history_items.len() {
+                    self.history_selected_index = self.history_items.len().saturating_sub(1);
+                }
             }
+            Err(error) => self.set_toast(format!("❌ 历史记录刷新失败: {}", error)),
         }
     }
 
@@ -131,28 +166,52 @@ impl<'a> App<'a> {
     }
 
     pub fn toggle_favorite_current_selected(&mut self) {
-        if let Some(item) = self.history_items.get(self.history_selected_index) {
-            let id = item.id;
-            let _ = self.db.toggle_favorite(id);
-            self.reload_history();
+        let Some(id) = self
+            .history_items
+            .get(self.history_selected_index)
+            .map(|item| item.id)
+        else {
+            return;
+        };
+
+        match self.db.toggle_favorite(id) {
+            Ok(is_favorite) => {
+                self.set_toast(if is_favorite {
+                    "⭐ 已加入生词本"
+                } else {
+                    "已从生词本移除"
+                });
+                self.reload_history();
+            }
+            Err(error) => self.set_toast(format!("❌ 收藏操作失败: {}", error)),
         }
     }
 
     pub fn delete_current_selected(&mut self) {
-        if let Some(item) = self.history_items.get(self.history_selected_index) {
-            let id = item.id;
-            let _ = self.db.delete_record(id);
-            self.reload_history();
+        let Some(id) = self
+            .history_items
+            .get(self.history_selected_index)
+            .map(|item| item.id)
+        else {
+            return;
+        };
+
+        match self.db.delete_record(id) {
+            Ok(()) => {
+                self.set_toast("已删除历史记录");
+                self.reload_history();
+            }
+            Err(error) => self.set_toast(format!("❌ 删除失败: {}", error)),
         }
     }
 
     pub fn set_toast(&mut self, msg: impl Into<String>) {
-        self.toast_message = Some((msg.into(), std::time::Instant::now()));
+        self.toast_message = Some((msg.into(), Instant::now()));
     }
 
     pub fn get_active_toast(&self) -> Option<&str> {
         if let Some((msg, time)) = &self.toast_message {
-            if time.elapsed() < std::time::Duration::from_secs(3) {
+            if time.elapsed() < Duration::from_secs(3) {
                 return Some(msg.as_str());
             }
         }
@@ -161,81 +220,152 @@ impl<'a> App<'a> {
 
     pub fn clear_input(&mut self) {
         self.textarea = TextArea::default();
-        self.textarea.set_placeholder_text("在此输入要翻译的内容，按 Enter 即刻翻译...");
+        set_placeholder(&mut self.textarea);
     }
 
     pub fn copy_result_to_clipboard(&mut self) {
-        if let Some(ref result) = self.current_result {
-            let content_to_copy = match result {
-                QueryOutput::Dict(d) => {
-                    let mut lines = Vec::new();
-                    lines.push(d.word.clone());
-                    if let Some(phonetic) = &d.phonetic_us.as_ref().or(d.phonetic_uk.as_ref()) {
-                        lines.push(format!("/ {} /", phonetic));
-                    }
-                    for def in &d.definitions {
-                        lines.push(format!("{}: {}", def.pos, def.meanings.join("；")));
-                    }
-                    lines.join("\n")
-                }
-                QueryOutput::Sentence { translated, .. } => translated.clone(),
-            };
-
-            match arboard::Clipboard::new() {
-                Ok(mut clipboard) => {
-                    if let Err(e) = clipboard.set_text(&content_to_copy) {
-                        self.set_toast(format!("❌ 复制失败: {}", e));
-                    } else {
-                        self.set_toast("✔ 译文已复制到剪贴板");
-                    }
-                }
-                Err(e) => {
-                    self.set_toast(format!("❌ 无法访问剪贴板: {}", e));
-                }
-            }
-        } else {
+        let Some(result) = self.current_result.as_ref() else {
             self.set_toast("⚠ 暂无翻译结果可复制");
+            return;
+        };
+
+        let content_to_copy = match result {
+            QueryOutput::Dict(detail) => {
+                let mut lines = vec![detail.word.clone()];
+                if let Some(phonetic) = detail.phonetic_us.as_ref().or(detail.phonetic_uk.as_ref())
+                {
+                    lines.push(phonetic.clone());
+                }
+                for definition in &detail.definitions {
+                    lines.push(format!(
+                        "{}: {}",
+                        definition.pos,
+                        definition.meanings.join("；")
+                    ));
+                }
+                lines.join("\n")
+            }
+            QueryOutput::Sentence { translated, .. } => translated.clone(),
+        };
+
+        match arboard::Clipboard::new() {
+            Ok(mut clipboard) => match clipboard.set_text(&content_to_copy) {
+                Ok(()) => self.set_toast("✔ 译文已复制到剪贴板"),
+                Err(error) => self.set_toast(format!("❌ 复制失败: {}", error)),
+            },
+            Err(error) => self.set_toast(format!("❌ 无法访问剪贴板: {}", error)),
         }
     }
 
-    pub async fn trigger_search(&mut self) {
-        let text = self.get_input_string().trim().to_string();
-        if text.is_empty() {
-            return;
+    pub fn cached_result(&self) -> Option<(String, QueryOutput)> {
+        if self.is_searching {
+            return None;
         }
+        let query = self.get_input_string().trim().to_string();
+        self.query_cache
+            .get(&query)
+            .cloned()
+            .map(|result| (query, result))
+    }
+
+    pub fn apply_cached_result(&mut self, query: String, output: QueryOutput) {
+        self.error_message = None;
+        self.result_scroll_offset = 0;
+        self.mode = InputMode::Normal;
+        self.record_success(query, output);
+    }
+
+    pub fn begin_search(&mut self) -> Option<SearchRequest> {
+        if self.is_searching {
+            return None;
+        }
+
+        let query = self.get_input_string().trim().to_string();
+        if query.is_empty() {
+            return None;
+        }
+
+        self.next_search_id = self.next_search_id.wrapping_add(1);
+        let request_id = self.next_search_id;
+        let (cancel_tx, cancel_rx) = oneshot::channel();
 
         self.is_searching = true;
         self.error_message = None;
         self.result_scroll_offset = 0;
+        self.mode = InputMode::Normal;
+        self.active_search_id = Some(request_id);
+        self.active_search_cancel = Some(cancel_tx);
 
-        match smart_query(&self.client, &text, false).await {
-            Ok(output) => {
-                let summary = match &output {
-                    QueryOutput::Dict(d) => {
-                        let mut s = String::new();
-                        for def in &d.definitions {
-                            s.push_str(&def.pos);
-                            s.push_str(&def.meanings.join(" "));
-                            s.push(' ');
-                        }
-                        s
-                    }
-                    QueryOutput::Sentence { translated, .. } => translated.clone(),
-                };
+        Some(SearchRequest {
+            request_id,
+            query,
+            client: self.client.clone(),
+            cancel: cancel_rx,
+        })
+    }
 
-                let _ = self.db.add_record(&text, &summary);
-                self.current_result = Some(output);
-                self.reload_history();
-            }
-            Err(e) => {
-                self.error_message = Some(e.to_string());
+    pub fn apply_search_result(
+        &mut self,
+        request_id: u64,
+        query: String,
+        result: std::result::Result<QueryOutput, String>,
+    ) {
+        if self.active_search_id != Some(request_id) {
+            return;
+        }
+
+        self.active_search_id = None;
+        self.active_search_cancel = None;
+        self.is_searching = false;
+
+        match result {
+            Ok(output) => self.record_success(query, output),
+            Err(error) => {
+                self.error_message = Some(error);
                 self.current_result = None;
             }
         }
-
-        self.is_searching = false;
-        self.mode = InputMode::Normal;
     }
+
+    pub fn cancel_active_search(&mut self) {
+        if let Some(cancel) = self.active_search_cancel.take() {
+            let _ = cancel.send(());
+        }
+        self.active_search_id = None;
+        self.is_searching = false;
+    }
+
+    fn record_success(&mut self, query: String, output: QueryOutput) {
+        self.cache_result(&query, output.clone());
+        let summary = output.summary();
+        self.current_result = Some(output);
+        match self.db.add_record(&query, &summary) {
+            Ok(_) => self.reload_history(),
+            Err(error) => {
+                self.set_toast(format!("⚠ 翻译成功，但历史记录保存失败: {}", error));
+            }
+        }
+    }
+
+    fn cache_result(&mut self, query: &str, result: QueryOutput) {
+        if self.query_cache.contains_key(query) {
+            if let Some(index) = self.query_cache_order.iter().position(|item| item == query) {
+                self.query_cache_order.remove(index);
+            }
+        }
+        self.query_cache.insert(query.to_string(), result);
+        self.query_cache_order.push_back(query.to_string());
+
+        while self.query_cache_order.len() > QUERY_CACHE_CAPACITY {
+            if let Some(oldest) = self.query_cache_order.pop_front() {
+                self.query_cache.remove(&oldest);
+            }
+        }
+    }
+}
+
+fn set_placeholder(textarea: &mut TextArea<'_>) {
+    textarea.set_placeholder_text("在此输入要翻译的内容，按 Enter 即刻翻译...");
 }
 
 #[cfg(test)]
@@ -244,23 +374,29 @@ mod tests {
 
     #[test]
     fn test_initial_mode_and_toast() {
-        let db = Database::init().unwrap();
+        let db = Database::open(":memory:").unwrap();
         let client = Client::new();
         let mut app = App::new(client, db);
 
-        // 默认处于 Insert 模式与 Input 面板
         assert_eq!(app.mode, InputMode::Insert);
         assert_eq!(app.focused_pane, FocusedPane::Input);
-
-        // Toast 状态测试
         assert_eq!(app.get_active_toast(), None);
+
         app.set_toast("测试提示");
         assert_eq!(app.get_active_toast(), Some("测试提示"));
 
-        // 清空输入框测试
         app.set_input_string("hello world");
         assert_eq!(app.get_input_string(), "hello world");
         app.clear_input();
         assert_eq!(app.get_input_string(), "");
+    }
+
+    #[test]
+    fn preserves_trailing_newline_when_loading_history() {
+        let db = Database::open(":memory:").unwrap();
+        let mut app = App::new(Client::new(), db);
+
+        app.set_input_string("a\n");
+        assert_eq!(app.get_input_string(), "a\n");
     }
 }
