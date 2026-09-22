@@ -18,6 +18,7 @@ use tui_textarea::Input;
 use crate::api::dict::smart_query;
 use crate::db::Database;
 use crate::error::Result;
+use crate::views::theme::ThemeMode;
 use app::{App, FocusedPane, InputMode, SearchRequest};
 use event::{AppEvent, EventHandler};
 
@@ -78,7 +79,7 @@ fn spawn_search(app: &mut App<'_>, sender: &mpsc::Sender<AppEvent>) {
     });
 }
 
-pub async fn run_tui(client: Client, db: Database) -> Result<()> {
+pub async fn run_tui(client: Client, db: Database, theme_mode: ThemeMode) -> Result<()> {
     let _session = TerminalSession::enter()?;
     let backend = CrosstermBackend::new(io::stdout());
     let mut terminal = Terminal::new(backend)?;
@@ -88,7 +89,7 @@ pub async fn run_tui(client: Client, db: Database) -> Result<()> {
     let event_sender = events.sender();
 
     loop {
-        terminal.draw(|frame| ui::render(frame, &mut app))?;
+        terminal.draw(|frame| ui::render(frame, &mut app, theme_mode))?;
 
         let Some(event) = events.next().await else {
             break;

@@ -9,7 +9,7 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::api::dict::QueryOutput;
 use crate::tui::app::{App, FocusedPane, HistoryFilter, InputMode};
-use crate::views::theme::*;
+use crate::views::theme::{Theme, ThemeMode};
 
 const WIDE_LAYOUT_MIN_WIDTH: u16 = 100;
 const COMPACT_LAYOUT_MIN_HEIGHT: u16 = 16;
@@ -26,21 +26,25 @@ pub fn input_content_width(terminal_width: u16) -> u16 {
     pane_width.saturating_sub(4).max(1)
 }
 
-pub fn render(f: &mut Frame, app: &mut App) {
+pub fn render(f: &mut Frame, app: &mut App, theme_mode: ThemeMode) {
     let area = f.area();
     let compact = area.width < WIDE_LAYOUT_MIN_WIDTH || area.height < COMPACT_LAYOUT_MIN_HEIGHT;
+    let theme = theme_mode.tui();
 
-    // Paint a stable background so panel and text contrast does not depend on
-    // whether the host terminal has a dark or light default background.
-    f.render_widget(Block::default().style(Style::default().bg(BG)), area);
+    // Auto mode uses Color::Reset here, allowing the terminal to provide its
+    // own background and default foreground.
+    f.render_widget(
+        Block::default().style(Style::default().bg(theme.background)),
+        area,
+    );
 
     if compact {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Min(3), Constraint::Length(2)])
             .split(area);
-        render_dual_pane(f, app, chunks[0], true);
-        render_status_bar(f, app, chunks[1], true);
+        render_dual_pane(f, app, chunks[0], true, &theme);
+        render_status_bar(f, app, chunks[1], true, &theme);
     } else {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -50,21 +54,21 @@ pub fn render(f: &mut Frame, app: &mut App) {
                 Constraint::Length(2),
             ])
             .split(area);
-        render_header(f, app, chunks[0]);
-        render_dual_pane(f, app, chunks[1], false);
-        render_status_bar(f, app, chunks[2], false);
+        render_header(f, app, chunks[0], &theme);
+        render_dual_pane(f, app, chunks[1], false, &theme);
+        render_status_bar(f, app, chunks[2], false, &theme);
     }
 
     if app.show_history_drawer {
-        render_history_drawer(f, app);
+        render_history_drawer(f, app, &theme);
     }
 
     if app.show_help {
-        render_help_popup(f);
+        render_help_popup(f, &theme);
     }
 }
 
-fn render_header(f: &mut Frame, app: &App, area: Rect) {
+fn render_header(f: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let state = if app.is_searching {
         "查询中"
     } else if app.error_message.is_some() {
@@ -84,23 +88,28 @@ fn render_header(f: &mut Frame, app: &App, area: Rect) {
             " tran ",
             Style::default()
                 .fg(Color::Black)
-                .bg(CYAN)
+                .bg(theme.cyan)
                 .add_modifier(Modifier::BOLD),
         ),
         Span::styled(
             " 终端翻译工作台 ",
-            Style::default().fg(FG).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme.foreground)
+                .add_modifier(Modifier::BOLD),
         ),
-        Span::styled("·", Style::default().fg(DARK_BORDER)),
+        Span::styled("·", Style::default().fg(theme.border)),
         Span::styled(
             format!(" {} · {} ", focus, state),
-            Style::default().fg(FG_SUB),
+            Style::default().fg(theme.secondary),
         ),
     ]);
-    f.render_widget(Paragraph::new(line).style(Style::default().bg(BG)), area);
+    f.render_widget(
+        Paragraph::new(line).style(Style::default().bg(theme.background)),
+        area,
+    );
 }
 
-fn render_dual_pane(f: &mut Frame, app: &mut App, area: Rect, compact: bool) {
+fn render_dual_pane(f: &mut Frame, app: &mut App, area: Rect, compact: bool, theme: &Theme) {
     if compact {
         let rows = Layout::default()
             .direction(Direction::Vertical)
@@ -110,9 +119,9 @@ fn render_dual_pane(f: &mut Frame, app: &mut App, area: Rect, compact: bool) {
                 Constraint::Min(1),
             ])
             .split(area);
-        render_input_editor(f, app, rows[0]);
-        render_separator(f, rows[1], false);
-        render_result_view(f, app, rows[2]);
+        render_input_editor(f, app, rows[0], theme);
+        render_separator(f, rows[1], false, theme);
+        render_result_view(f, app, rows[2], theme);
     } else {
         let columns = Layout::default()
             .direction(Direction::Horizontal)
@@ -122,33 +131,36 @@ fn render_dual_pane(f: &mut Frame, app: &mut App, area: Rect, compact: bool) {
                 Constraint::Min(1),
             ])
             .split(area);
-        render_input_editor(f, app, columns[0]);
-        render_separator(f, columns[1], true);
-        render_result_view(f, app, columns[2]);
+        render_input_editor(f, app, columns[0], theme);
+        render_separator(f, columns[1], true, theme);
+        render_result_view(f, app, columns[2], theme);
     }
 }
 
-fn render_separator(f: &mut Frame, area: Rect, vertical: bool) {
+fn render_separator(f: &mut Frame, area: Rect, vertical: bool, theme: &Theme) {
     if vertical {
         let lines = (0..area.height)
-            .map(|_| Line::from(Span::styled("│", Style::default().fg(DARK_BORDER))))
+            .map(|_| Line::from(Span::styled("│", Style::default().fg(theme.border))))
             .collect::<Vec<_>>();
-        f.render_widget(Paragraph::new(lines).style(Style::default().bg(BG)), area);
+        f.render_widget(
+            Paragraph::new(lines).style(Style::default().bg(theme.background)),
+            area,
+        );
     } else {
         let line = "─".repeat(area.width as usize);
         f.render_widget(
-            Paragraph::new(line).style(Style::default().fg(DARK_BORDER).bg(BG)),
+            Paragraph::new(line).style(Style::default().fg(theme.border).bg(theme.background)),
             area,
         );
     }
 }
 
-fn pane_block<'a>(title: &'a str, border_color: Color) -> Block<'a> {
+fn pane_block<'a>(title: &'a str, border_color: Color, theme: &Theme) -> Block<'a> {
     Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(border_color))
-        .style(Style::default().bg(BG))
+        .style(Style::default().bg(theme.background))
         .padding(Padding::horizontal(1))
         .title(Span::styled(
             title,
@@ -158,36 +170,39 @@ fn pane_block<'a>(title: &'a str, border_color: Color) -> Block<'a> {
         ))
 }
 
-fn render_input_editor(f: &mut Frame, app: &mut App, area: Rect) {
+fn render_input_editor(f: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
     let is_focused = app.focused_pane == FocusedPane::Input;
     let (border_color, title_text) = if is_focused {
         match app.mode {
-            InputMode::Insert => (GREEN, " 原文输入 · INSERT "),
-            InputMode::Normal => (CYAN, " 原文输入 · NORMAL "),
+            InputMode::Insert => (theme.green, " 原文输入 · INSERT "),
+            InputMode::Normal => (theme.cyan, " 原文输入 · NORMAL "),
         }
     } else {
-        (DARK_BORDER, " 原文输入 ")
+        (theme.border, " 原文输入 ")
     };
 
-    let input_block = pane_block(title_text, border_color);
+    let input_block = pane_block(title_text, border_color, theme);
     let inner_area = input_block.inner(area);
 
     app.textarea.set_cursor_line_style(Style::default());
     app.textarea.set_block(input_block);
-    app.textarea.set_style(Style::default().fg(FG).bg(BG));
+    app.textarea
+        .set_style(Style::default().fg(theme.foreground).bg(theme.background));
     app.textarea
         .set_cursor_style(if is_focused && app.mode == InputMode::Insert {
             Style::default()
                 .fg(Color::Black)
-                .bg(CYAN)
+                .bg(theme.cyan)
                 .add_modifier(Modifier::BOLD)
         } else if is_focused && app.mode == InputMode::Normal {
-            Style::default().fg(CYAN).add_modifier(Modifier::UNDERLINED)
+            Style::default()
+                .fg(theme.cyan)
+                .add_modifier(Modifier::UNDERLINED)
         } else {
             Style::default()
         });
     app.textarea
-        .set_placeholder_style(Style::default().fg(COMMENT).bg(BG));
+        .set_placeholder_style(Style::default().fg(theme.comment).bg(theme.background));
 
     f.render_widget(&app.textarea, area);
 
@@ -213,29 +228,31 @@ fn render_input_editor(f: &mut Frame, app: &mut App, area: Rect) {
     }
 }
 
-fn render_result_view(f: &mut Frame, app: &mut App, area: Rect) {
+fn render_result_view(f: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
     let is_focused = app.focused_pane == FocusedPane::Result;
-    let border_color = if is_focused { BLUE } else { DARK_BORDER };
+    let border_color = if is_focused { theme.blue } else { theme.border };
     let title_text = if is_focused {
         " 译文 / 词典 · NORMAL "
     } else {
         " 译文 / 词典 "
     };
-    let block = pane_block(title_text, border_color);
+    let block = pane_block(title_text, border_color, theme);
 
     if app.is_searching {
         let loading = Paragraph::new(vec![
             Line::from(""),
             Line::from(Span::styled(
                 "正在检索翻译与词典数据，请稍候…",
-                Style::default().fg(YELLOW).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme.yellow)
+                    .add_modifier(Modifier::BOLD),
             )),
             Line::from(Span::styled(
                 "网络请求在后台执行，输入区仍可安全浏览。",
-                Style::default().fg(FG_SUB),
+                Style::default().fg(theme.secondary),
             )),
         ])
-        .style(Style::default().fg(FG).bg(BG))
+        .style(Style::default().fg(theme.foreground).bg(theme.background))
         .wrap(Wrap { trim: false })
         .block(block);
         f.render_widget(loading, area);
@@ -247,16 +264,19 @@ fn render_result_view(f: &mut Frame, app: &mut App, area: Rect) {
             Line::from(""),
             Line::from(Span::styled(
                 "查询失败",
-                Style::default().fg(RED).add_modifier(Modifier::BOLD),
+                Style::default().fg(theme.red).add_modifier(Modifier::BOLD),
             )),
-            Line::from(Span::styled(error.as_str(), Style::default().fg(FG))),
+            Line::from(Span::styled(
+                error.as_str(),
+                Style::default().fg(theme.foreground),
+            )),
             Line::from(""),
             Line::from(Span::styled(
                 "修改左侧内容后按 Enter 重试。",
-                Style::default().fg(COMMENT),
+                Style::default().fg(theme.comment),
             )),
         ])
-        .style(Style::default().fg(FG).bg(BG))
+        .style(Style::default().fg(theme.foreground).bg(theme.background))
         .wrap(Wrap { trim: false })
         .block(block);
         f.render_widget(error_widget, area);
@@ -269,35 +289,35 @@ fn render_result_view(f: &mut Frame, app: &mut App, area: Rect) {
             let mut word_spans = vec![Span::styled(
                 format!(" {} ", detail.word),
                 Style::default()
-                    .fg(BLUE)
-                    .bg(SELECTION)
+                    .fg(theme.blue)
+                    .bg(theme.selection)
                     .add_modifier(Modifier::BOLD),
             )];
             if let Some(ref us) = detail.phonetic_us {
                 let clean = us.trim_matches(|c| c == '/' || c == '[' || c == ']' || c == ' ');
                 word_spans.push(Span::styled(
                     format!("  美 [{}]", clean),
-                    Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+                    Style::default().fg(theme.cyan).add_modifier(Modifier::BOLD),
                 ));
             }
             if let Some(ref uk) = detail.phonetic_uk {
                 let clean = uk.trim_matches(|c| c == '/' || c == '[' || c == ']' || c == ' ');
                 word_spans.push(Span::styled(
                     format!("  英 [{}]", clean),
-                    Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+                    Style::default().fg(theme.cyan).add_modifier(Modifier::BOLD),
                 ));
             }
             lines.push(Line::from(word_spans));
             if !detail.tags.is_empty() {
                 lines.push(Line::from(Span::styled(
                     format!("标签：{}", detail.tags.join(" · ")),
-                    Style::default().fg(COMMENT),
+                    Style::default().fg(theme.comment),
                 )));
             }
             lines.push(Line::from(""));
 
             if !detail.definitions.is_empty() {
-                lines.push(section_line("词典释义", GREEN));
+                lines.push(section_line("词典释义", theme.green, theme));
                 for definition in &detail.definitions {
                     let formatted_pos = if definition.pos.is_empty() {
                         String::new()
@@ -309,9 +329,14 @@ fn render_result_view(f: &mut Frame, app: &mut App, area: Rect) {
                     lines.push(Line::from(vec![
                         Span::styled(
                             format!("  {:>6}  ", formatted_pos),
-                            Style::default().fg(ORANGE).add_modifier(Modifier::BOLD),
+                            Style::default()
+                                .fg(theme.orange)
+                                .add_modifier(Modifier::BOLD),
                         ),
-                        Span::styled(definition.meanings.join("；"), Style::default().fg(FG)),
+                        Span::styled(
+                            definition.meanings.join("；"),
+                            Style::default().fg(theme.foreground),
+                        ),
                     ]));
                 }
             }
@@ -320,25 +345,25 @@ fn render_result_view(f: &mut Frame, app: &mut App, area: Rect) {
                 if !detail.definitions.is_empty() {
                     lines.push(Line::from(""));
                 }
-                lines.push(section_line("双语例句", MAGENTA));
+                lines.push(section_line("双语例句", theme.magenta, theme));
                 for (index, example) in detail.examples.iter().enumerate() {
                     lines.push(Line::from(vec![
                         Span::styled(
                             format!("  {}. ", index + 1),
-                            Style::default().fg(BLUE).add_modifier(Modifier::BOLD),
+                            Style::default().fg(theme.blue).add_modifier(Modifier::BOLD),
                         ),
-                        Span::styled(&example.orig, Style::default().fg(BLUE)),
+                        Span::styled(&example.orig, Style::default().fg(theme.blue)),
                     ]));
                     lines.push(Line::from(vec![
-                        Span::styled("     -> ", Style::default().fg(COMMENT)),
-                        Span::styled(&example.trans, Style::default().fg(FG_SUB)),
+                        Span::styled("     -> ", Style::default().fg(theme.comment)),
+                        Span::styled(&example.trans, Style::default().fg(theme.secondary)),
                     ]));
                 }
             }
 
             let scroll_offset = app.result_scroll_offset;
             app.result_scroll_offset =
-                render_scrolled_paragraph(f, area, block, lines, scroll_offset);
+                render_scrolled_paragraph(f, area, block, lines, scroll_offset, theme);
         }
         Some(QueryOutput::Sentence {
             original,
@@ -353,68 +378,83 @@ fn render_result_view(f: &mut Frame, app: &mut App, area: Rect) {
                     target_lang.to_uppercase()
                 ),
                 Style::default()
-                    .fg(MAGENTA)
-                    .bg(SELECTION)
+                    .fg(theme.magenta)
+                    .bg(theme.selection)
                     .add_modifier(Modifier::BOLD),
             ))];
             lines.push(Line::from(""));
-            lines.push(section_line("原文", BLUE));
+            lines.push(section_line("原文", theme.blue, theme));
             for line in original.lines() {
                 lines.push(Line::from(Span::styled(
                     format!("  {}", line),
-                    Style::default().fg(FG),
+                    Style::default().fg(theme.foreground),
                 )));
             }
             lines.push(Line::from(""));
-            lines.push(section_line("译文", GREEN));
+            lines.push(section_line("译文", theme.green, theme));
             for line in translated.lines() {
                 lines.push(Line::from(Span::styled(
                     format!("  {}", line),
-                    Style::default().fg(GREEN),
+                    Style::default().fg(theme.green),
                 )));
             }
 
             let scroll_offset = app.result_scroll_offset;
             app.result_scroll_offset =
-                render_scrolled_paragraph(f, area, block, lines, scroll_offset);
+                render_scrolled_paragraph(f, area, block, lines, scroll_offset, theme);
         }
         None => {
             let lines = vec![
                 Line::from(""),
                 Line::from(Span::styled(
                     "在左侧输入内容，按 Enter 开始查询。",
-                    Style::default().fg(FG).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(theme.foreground)
+                        .add_modifier(Modifier::BOLD),
                 )),
                 Line::from(""),
                 Line::from(vec![
                     Span::styled(
                         "单词  ",
-                        Style::default().fg(GREEN).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(theme.green)
+                            .add_modifier(Modifier::BOLD),
                     ),
-                    Span::styled("音标、词性释义和双语例句", Style::default().fg(FG_SUB)),
+                    Span::styled(
+                        "音标、词性释义和双语例句",
+                        Style::default().fg(theme.secondary),
+                    ),
                 ]),
                 Line::from(vec![
                     Span::styled(
                         "长句  ",
-                        Style::default().fg(BLUE).add_modifier(Modifier::BOLD),
+                        Style::default().fg(theme.blue).add_modifier(Modifier::BOLD),
                     ),
-                    Span::styled("自动检测语种并生成对照译文", Style::default().fg(FG_SUB)),
+                    Span::styled(
+                        "自动检测语种并生成对照译文",
+                        Style::default().fg(theme.secondary),
+                    ),
                 ]),
                 Line::from(vec![
                     Span::styled(
                         "历史  ",
-                        Style::default().fg(PURPLE).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(theme.purple)
+                            .add_modifier(Modifier::BOLD),
                     ),
-                    Span::styled("按 h 打开历史记录与生词本", Style::default().fg(FG_SUB)),
+                    Span::styled(
+                        "按 h 打开历史记录与生词本",
+                        Style::default().fg(theme.secondary),
+                    ),
                 ]),
                 Line::from(""),
                 Line::from(Span::styled(
                     "Tab 切换面板 · ? 查看快捷键 · q 退出",
-                    Style::default().fg(COMMENT),
+                    Style::default().fg(theme.comment),
                 )),
             ];
             let paragraph = Paragraph::new(lines)
-                .style(Style::default().fg(FG).bg(BG))
+                .style(Style::default().fg(theme.foreground).bg(theme.background))
                 .wrap(Wrap { trim: false })
                 .block(block);
             f.render_widget(paragraph, area);
@@ -422,12 +462,12 @@ fn render_result_view(f: &mut Frame, app: &mut App, area: Rect) {
     }
 }
 
-fn section_line(label: &str, color: Color) -> Line<'static> {
+fn section_line(label: &str, color: Color, theme: &Theme) -> Line<'static> {
     Line::from(Span::styled(
         format!("  {}  ", label),
         Style::default()
             .fg(color)
-            .bg(SELECTION)
+            .bg(theme.selection)
             .add_modifier(Modifier::BOLD),
     ))
 }
@@ -438,10 +478,11 @@ fn render_scrolled_paragraph<'a>(
     block: Block<'a>,
     lines: Vec<Line<'a>>,
     scroll_offset: u16,
+    theme: &Theme,
 ) -> u16 {
     let viewport = block.inner(area);
     let paragraph = Paragraph::new(lines)
-        .style(Style::default().fg(FG).bg(BG))
+        .style(Style::default().fg(theme.foreground).bg(theme.background))
         .wrap(Wrap { trim: false });
     let max_scroll = paragraph
         .line_count(viewport.width.max(1))
@@ -453,7 +494,7 @@ fn render_scrolled_paragraph<'a>(
     scroll_offset
 }
 
-fn render_history_drawer(f: &mut Frame, app: &App) {
+fn render_history_drawer(f: &mut Frame, app: &App, theme: &Theme) {
     let area = centered_rect(84, 78, f.area());
     f.render_widget(Clear, area);
 
@@ -464,12 +505,14 @@ fn render_history_drawer(f: &mut Frame, app: &App) {
     let block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Double)
-        .border_style(Style::default().fg(PURPLE))
-        .style(Style::default().bg(BG))
+        .border_style(Style::default().fg(theme.purple))
+        .style(Style::default().bg(theme.background))
         .padding(Padding::horizontal(1))
         .title(Span::styled(
             filter_title,
-            Style::default().fg(PURPLE).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme.purple)
+                .add_modifier(Modifier::BOLD),
         ));
 
     let inner_width = block.inner(area).width as usize;
@@ -487,7 +530,7 @@ fn render_history_drawer(f: &mut Frame, app: &App) {
     let items = if app.history_items.is_empty() {
         vec![ListItem::new(Line::from(Span::styled(
             "暂无记录。完成一次查询后会自动出现在这里。",
-            Style::default().fg(COMMENT),
+            Style::default().fg(theme.comment),
         )))]
     } else {
         app.history_items
@@ -505,17 +548,21 @@ fn render_history_drawer(f: &mut Frame, app: &App) {
                 let row = Line::from(vec![
                     Span::styled(
                         prefix,
-                        Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+                        Style::default().fg(theme.cyan).add_modifier(Modifier::BOLD),
                     ),
-                    Span::styled(favorite, Style::default().fg(YELLOW)),
+                    Span::styled(favorite, Style::default().fg(theme.yellow)),
                     Span::styled(
                         format!("{}{}", query, query_padding),
-                        Style::default().fg(if selected { FG } else { FG_SUB }),
+                        Style::default().fg(if selected {
+                            theme.foreground
+                        } else {
+                            theme.secondary
+                        }),
                     ),
-                    Span::styled(format!("  {}", summary), Style::default().fg(COMMENT)),
+                    Span::styled(format!("  {}", summary), Style::default().fg(theme.comment)),
                 ]);
                 let row_style = if selected {
-                    Style::default().bg(SELECTION)
+                    Style::default().bg(theme.selection)
                 } else {
                     Style::default()
                 };
@@ -525,12 +572,12 @@ fn render_history_drawer(f: &mut Frame, app: &App) {
     };
 
     let list = List::new(items)
-        .style(Style::default().fg(FG).bg(BG))
+        .style(Style::default().fg(theme.foreground).bg(theme.background))
         .block(block);
     f.render_widget(list, area);
 }
 
-fn render_status_bar(f: &mut Frame, app: &App, area: Rect, compact: bool) {
+fn render_status_bar(f: &mut Frame, app: &App, area: Rect, compact: bool, theme: &Theme) {
     let mode = match app.mode {
         InputMode::Insert => "INSERT",
         InputMode::Normal => "NORMAL",
@@ -553,11 +600,11 @@ fn render_status_bar(f: &mut Frame, app: &App, area: Rect, compact: bool) {
         first_text.push_str(toast);
     }
     let first_color = if app.get_active_toast().is_some() {
-        YELLOW
+        theme.yellow
     } else if app.error_message.is_some() {
-        RED
+        theme.red
     } else {
-        FG
+        theme.foreground
     };
 
     let hints = if app.show_history_drawer {
@@ -593,13 +640,16 @@ fn render_status_bar(f: &mut Frame, app: &App, area: Rect, compact: bool) {
         )),
         Line::from(Span::styled(
             truncate_display_width(hints, width),
-            Style::default().fg(FG_SUB),
+            Style::default().fg(theme.secondary),
         )),
     ];
-    f.render_widget(Paragraph::new(lines).style(Style::default().bg(BG)), area);
+    f.render_widget(
+        Paragraph::new(lines).style(Style::default().bg(theme.background)),
+        area,
+    );
 }
 
-fn render_help_popup(f: &mut Frame) {
+fn render_help_popup(f: &mut Frame, theme: &Theme) {
     let area = centered_rect(94, 94, f.area());
     f.render_widget(Clear, area);
 
@@ -607,50 +657,53 @@ fn render_help_popup(f: &mut Frame) {
         .title(" HELP · 快捷键（按任意键关闭） ")
         .borders(Borders::ALL)
         .border_type(BorderType::Double)
-        .border_style(Style::default().fg(YELLOW))
-        .style(Style::default().bg(BG))
+        .border_style(Style::default().fg(theme.yellow))
+        .style(Style::default().bg(theme.background))
         .padding(Padding::horizontal(2));
 
     let help_text = vec![
-        section_line("INSERT 输入模式", GREEN),
-        shortcut_line("键盘输入", "编辑原文内容"),
-        shortcut_line("Enter", "执行翻译 / 查词"),
-        shortcut_line("Shift+Enter", "插入换行（Ctrl+J 同效）"),
-        shortcut_line("Esc", "返回 NORMAL 导航模式"),
-        shortcut_line("Tab", "切换到译文区"),
+        section_line("INSERT 输入模式", theme.green, theme),
+        shortcut_line("键盘输入", "编辑原文内容", theme),
+        shortcut_line("Enter", "执行翻译 / 查词", theme),
+        shortcut_line("Shift+Enter", "插入换行（Ctrl+J 同效）", theme),
+        shortcut_line("Esc", "返回 NORMAL 导航模式", theme),
+        shortcut_line("Tab", "切换到译文区", theme),
         Line::from(""),
-        section_line("NORMAL 导航模式", BLUE),
-        shortcut_line("i / a", "进入输入模式"),
-        shortcut_line("Tab / ← / →", "切换输入区与译文区"),
-        shortcut_line("j / k", "移动光标或滚动译文"),
-        shortcut_line("g / G", "译文区跳到顶部 / 底部"),
-        shortcut_line("d / u", "译文区向下 / 向上翻页"),
-        shortcut_line("y", "复制当前结果"),
-        shortcut_line("h", "打开历史记录与生词本"),
-        shortcut_line("? / q", "帮助 / 退出"),
+        section_line("NORMAL 导航模式", theme.blue, theme),
+        shortcut_line("i / a", "进入输入模式", theme),
+        shortcut_line("Tab / ← / →", "切换输入区与译文区", theme),
+        shortcut_line("j / k", "移动光标或滚动译文", theme),
+        shortcut_line("g / G", "译文区跳到顶部 / 底部", theme),
+        shortcut_line("d / u", "译文区向下 / 向上翻页", theme),
+        shortcut_line("y", "复制当前结果", theme),
+        shortcut_line("h", "打开历史记录与生词本", theme),
+        shortcut_line("? / q", "帮助 / 退出", theme),
         Line::from(""),
-        section_line("历史记录抽屉", PURPLE),
-        shortcut_line("j / k", "选择条目"),
-        shortcut_line("Enter", "载入并重新查询"),
-        shortcut_line("f / d", "收藏 / 删除"),
-        shortcut_line("c", "切换全部历史与生词本"),
-        shortcut_line("Esc / h / q", "关闭抽屉"),
+        section_line("历史记录抽屉", theme.purple, theme),
+        shortcut_line("j / k", "选择条目", theme),
+        shortcut_line("Enter", "载入并重新查询", theme),
+        shortcut_line("f / d", "收藏 / 删除", theme),
+        shortcut_line("c", "切换全部历史与生词本", theme),
+        shortcut_line("Esc / h / q", "关闭抽屉", theme),
     ];
 
     let paragraph = Paragraph::new(help_text)
-        .style(Style::default().fg(FG).bg(BG))
+        .style(Style::default().fg(theme.foreground).bg(theme.background))
         .wrap(Wrap { trim: false })
         .block(block);
     f.render_widget(paragraph, area);
 }
 
-fn shortcut_line(key: &str, description: &str) -> Line<'static> {
+fn shortcut_line(key: &str, description: &str, theme: &Theme) -> Line<'static> {
     Line::from(vec![
         Span::styled(
             format!("  {:<16}", key),
-            Style::default().fg(CYAN).add_modifier(Modifier::BOLD),
+            Style::default().fg(theme.cyan).add_modifier(Modifier::BOLD),
         ),
-        Span::styled(description.to_string(), Style::default().fg(FG)),
+        Span::styled(
+            description.to_string(),
+            Style::default().fg(theme.foreground),
+        ),
     ])
 }
 
@@ -732,7 +785,7 @@ mod tests {
             let db = Database::open(":memory:").unwrap();
             let mut app = App::new(Client::new(), db);
             terminal
-                .draw(|frame| render(frame, &mut app))
+                .draw(|frame| render(frame, &mut app, ThemeMode::Auto))
                 .expect("responsive layout should render");
         }
     }

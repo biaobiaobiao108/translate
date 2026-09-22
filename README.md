@@ -3,7 +3,7 @@
 <div align="center">
   <img src="docs/assets/logo.svg" alt="tran logo" width="180" height="180" />
   <br>
-  <p><strong>专为极客与开发者打造的高性能终端翻译利器 · 沉浸式 Tokyo Night 配色 · 原生单一独立二进制</strong></p>
+  <p><strong>专为极客与开发者打造的高性能终端翻译利器 · 自适应终端配色 · 原生单一独立二进制</strong></p>
   <p>
     <a href="https://github.com/biaobiaobiao108/translate/releases"><img src="https://img.shields.io/github/v/release/biaobiaobiao108/translate?color=7aa2f7&label=Release" alt="GitHub Release"></a>
     <img src="https://img.shields.io/badge/Language-Rust%202021-e0af68.svg" alt="Rust 2021">
@@ -17,7 +17,7 @@
 
 ## 📖 项目简介
 
-**tran** 是一款基于 Rust 开发的现代化 CLI / TUI 翻译与词典工具。它采用优雅深邃的 **Tokyo Night** 主题配色，让查词与翻译在终端中保持敏捷、可控。
+**tran** 是一款基于 Rust 开发的现代化 CLI / TUI 翻译与词典工具。默认继承终端的背景与正文颜色，也支持高对比的 **Tokyo Night 深色** 和浅色主题，让查词与翻译在不同终端中保持清晰、可控。
 
 - **CLI 模式**：极速毫秒级响应，单词智能分流呈现详尽权威词典卡片（英美音标、词性精释、权威中英双语例句）；长句自动调用 Google 智能翻译接口。
 - **TUI 模式**：根据终端尺寸自适应的双栏 / 上下布局，支持 50+ 行超长文本视口跟随滚动、微秒级批量粘贴注入保护、输入法 (IME) 物理光标精确跟随定位、本地 SQLite 生词本与历史抽屉管理。
@@ -27,7 +27,7 @@
 ## ✨ 核心特性
 
 - ⚡ **CLI 极速秒级查词**：智能分流单词与长句。查词立显权威英美双音标、词性分类详尽释义与中英权威双语例句。
-- 🎨 **Tokyo Night 经典配色**：全界面严格遵循 Tokyo Night 标准色板（`#1a1b26`、`#7aa2f7`、`#7dcfff`、`#bb9af7`），高对比度柔和护眼。
+- 🎨 **自适应终端主题**：默认 `auto` 模式继承终端背景和默认正文色，也可通过 `--theme dark` 使用 Tokyo Night 深色主题，或通过 `--theme light` 使用浅色高对比主题。
 - 🖥️ **TUI 自适应沉浸对照**：宽终端使用 46/54 双栏，窄终端自动切换为上下布局；左栏多行编辑输入，右栏实时呈现翻译与释义，避免小窗口中内容挤压和溢出。
 - 🔎 **高可读终端排版**：CLI 按中英文实际显示宽度换行，TUI 使用高对比正文色、明确的模式 / 状态栏和响应式弹窗，减少不同终端字体与背景造成的阅读问题。
 - 📝 **工业级文本编辑**：基于 `tui-textarea` 深度调优，支持长文本跨行移动、平滑自动折行与全向光标漫游。
@@ -164,11 +164,25 @@ tran rust --proxy http://127.0.0.1:7890
 
 ### 2. TUI 双栏沉浸模式
 
-直接执行 `tran i` 进入双栏交互界面：
+直接执行 `tran i` 进入自适应交互界面：
 
 ```bash
 tran i
 ```
+
+主题模式：
+
+```bash
+# 默认：继承终端背景与默认正文颜色
+tran --theme auto rust
+tran --theme auto i
+
+# 固定高对比主题
+tran --theme dark rust
+tran --theme light i
+```
+
+`auto` 模式不会猜测终端是浅色还是深色，而是使用终端自己的背景和默认前景色；这是跨 Windows、macOS 和 Linux 最稳定的适配方式。
 
 ---
 

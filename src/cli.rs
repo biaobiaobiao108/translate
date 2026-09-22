@@ -1,5 +1,7 @@
 use clap::Parser;
 
+use crate::views::theme::ThemeMode;
+
 #[derive(Parser, Debug)]
 #[command(
     name = env!("CARGO_PKG_NAME"),
@@ -7,6 +9,15 @@ use clap::Parser;
     about = "现代快速、美观的 CLI / TUI 翻译与词典工具"
 )]
 pub struct CliArgs {
+    /// 选择终端配色：auto 继承终端背景，dark / light 使用固定高对比配色
+    #[arg(
+        long = "theme",
+        value_enum,
+        default_value_t = ThemeMode::Auto,
+        help = "设置终端主题：auto、dark 或 light"
+    )]
+    pub theme: ThemeMode,
+
     /// 强制以句子模式进行 Google 翻译
     #[arg(short = 's', long = "sentence", help = "强制将输入作为整句进行翻译")]
     pub sentence: bool,
