@@ -1,6 +1,6 @@
 [package]
 name = "tran"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2021"
 description = "现代快速、美观的 CLI / TUI 翻译与词典工具"
 license = "MIT"
