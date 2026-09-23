@@ -7,7 +7,6 @@ use crate::error::{AppError, Result};
 
 const MAX_UNFAVORITED_HISTORY: i64 = 1_000;
 const MAX_SUMMARY_CHARS: usize = 2_000;
-const SCHEMA_VERSION: i64 = 3;
 
 #[derive(Debug, Clone)]
 pub struct HistoryItem {
@@ -182,55 +181,25 @@ impl Database {
 }
 
 fn migrate(conn: &Connection) -> Result<()> {
-    let version: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
-    if version < 1 {
-        conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS history (
-                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                 query TEXT NOT NULL,
-                 result_summary TEXT NOT NULL,
-                 is_favorite INTEGER NOT NULL DEFAULT 0,
-                 created_at TEXT NOT NULL DEFAULT (datetime('now'))
-             );
-             CREATE INDEX IF NOT EXISTS idx_history_favorite_id
-                 ON history (is_favorite, id DESC);",
-        )?;
-        conn.pragma_update(None, "user_version", 1i64)?;
-    }
-    if version < 2 {
-        conn.execute_batch(
-            "DROP INDEX IF EXISTS idx_history_favorite_id;
-             CREATE INDEX IF NOT EXISTS idx_history_favorite_created
-                 ON history (is_favorite, created_at DESC, id DESC);",
-        )?;
-        conn.pragma_update(None, "user_version", 2i64)?;
-    }
-    if version < 3 {
-        conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS config (
-                 key TEXT PRIMARY KEY,
-                 value TEXT NOT NULL
-             );",
-        )?;
-        conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
-    }
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS history (
+             id INTEGER PRIMARY KEY AUTOINCREMENT,
+             query TEXT NOT NULL,
+             result_summary TEXT NOT NULL,
+             is_favorite INTEGER NOT NULL DEFAULT 0,
+             created_at TEXT NOT NULL DEFAULT (datetime('now'))
+         );
+         CREATE INDEX IF NOT EXISTS idx_history_favorite_created
+             ON history (is_favorite, created_at DESC, id DESC);
+         CREATE TABLE IF NOT EXISTS config (
+             key TEXT PRIMARY KEY,
+             value TEXT NOT NULL
+         );",
+    )?;
     Ok(())
 }
 
 fn default_db_path() -> Result<PathBuf> {
-    // Keep using the legacy path when it already exists so upgrades do not
-    // silently hide the user's existing history.
-    if let Some(home) = dirs::home_dir() {
-        let legacy_path = home.join(".translate").join("history.db");
-        if legacy_path.exists() {
-            return Ok(legacy_path);
-        }
-    }
-
-    if let Some(data_dir) = dirs::data_local_dir() {
-        return Ok(data_dir.join("tran").join("history.db"));
-    }
-
     dirs::home_dir()
         .map(|home| home.join(".translate").join("history.db"))
         .ok_or_else(|| AppError::General("无法确定本地数据目录".to_string()))
