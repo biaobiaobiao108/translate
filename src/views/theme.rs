@@ -89,7 +89,7 @@ impl ThemeMode {
                 secondary: Color::Rgb(192, 202, 245),
                 blue: Color::Rgb(122, 162, 247),
                 cyan: Color::Rgb(125, 207, 255),
-                green: Color::Rgb(158, 206, 106),
+                green: Color::Rgb(115, 218, 202),
                 magenta: Color::Rgb(187, 154, 247),
                 purple: Color::Rgb(157, 124, 216),
                 orange: Color::Rgb(255, 158, 100),
@@ -102,11 +102,11 @@ impl ThemeMode {
             },
             Self::Light => Theme {
                 background: Color::Reset,
-                foreground: Color::Rgb(55, 60, 84),
+                foreground: Color::Rgb(40, 44, 60),
                 secondary: Color::Rgb(76, 85, 120),
-                blue: Color::Rgb(46, 86, 173),
+                blue: Color::Rgb(36, 76, 160),
                 cyan: Color::Rgb(0, 113, 143),
-                green: Color::Rgb(56, 112, 16),
+                green: Color::Rgb(22, 110, 60),
                 magenta: Color::Rgb(142, 60, 202),
                 purple: Color::Rgb(115, 60, 190),
                 orange: Color::Rgb(180, 77, 24),
@@ -125,10 +125,10 @@ impl ThemeMode {
         match resolved {
             Self::Auto | Self::Dark => CliTheme {
                 foreground: (230, 237, 243),
-                translation: (192, 202, 245),
+                translation: (115, 218, 202), // Tokyo Night mint green #73daca: crisp and highly legible on dark
                 blue: (122, 162, 247),
                 cyan: (125, 207, 255),
-                green: (158, 206, 106),
+                green: (115, 218, 202),
                 magenta: (187, 154, 247),
                 orange: (255, 158, 100),
                 yellow: (224, 175, 104),
@@ -136,15 +136,15 @@ impl ThemeMode {
                 border: (86, 95, 137),
             },
             Self::Light => CliTheme {
-                foreground: (55, 60, 84),
-                translation: (76, 85, 120),
-                blue: (46, 86, 173),
+                foreground: (40, 44, 60),
+                translation: (22, 110, 60), // High contrast deep emerald green for light backgrounds
+                blue: (36, 76, 160),
                 cyan: (0, 113, 143),
-                green: (56, 112, 16),
+                green: (22, 110, 60),
                 magenta: (142, 60, 202),
                 orange: (180, 77, 24),
                 yellow: (143, 94, 21),
-                muted: (132, 142, 179),
+                muted: (100, 110, 140),
                 border: (160, 168, 195),
             },
         }
@@ -182,45 +182,89 @@ pub fn detect_terminal_theme() -> ThemeMode {
         }
     }
 
-    // 3. On Windows: check system personalization theme
+    // 3. On Windows: check Windows Terminal settings if inside WT_SESSION
     #[cfg(windows)]
     {
-        if let Some(is_light) = detect_windows_light_theme() {
-            if is_light {
-                return ThemeMode::Light;
-            } else {
-                return ThemeMode::Dark;
-            }
+        if let Some(mode) = detect_windows_terminal_theme() {
+            return mode;
         }
     }
 
-    // 4. Default fallback: Dark (classic Tokyo Night)
+    // 4. Default fallback: Dark (classic Tokyo Night for terminal environments)
     ThemeMode::Dark
 }
 
 #[cfg(windows)]
-fn detect_windows_light_theme() -> Option<bool> {
-    use std::process::Command;
-    let output = Command::new("reg")
-        .args([
-            "query",
-            "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
-            "/v",
-            "AppsUseLightTheme",
-        ])
-        .output()
-        .ok()?;
-    let text = String::from_utf8_lossy(&output.stdout);
-    for line in text.lines() {
-        if line.contains("AppsUseLightTheme") {
-            if line.contains("0x1") {
-                return Some(true);
-            } else if line.contains("0x0") {
-                return Some(false);
+fn detect_windows_terminal_theme() -> Option<ThemeMode> {
+    if std::env::var("WT_SESSION").is_err() {
+        return None;
+    }
+
+    let local_app_data = std::env::var("LOCALAPPDATA").ok()?;
+    let candidate_paths = [
+        format!(
+            "{}\\Packages\\Microsoft.WindowsTerminal_8wekyb3d8bbwe\\LocalState\\settings.json",
+            local_app_data
+        ),
+        format!("{}\\Microsoft\\Windows Terminal\\settings.json", local_app_data),
+    ];
+
+    for path in candidate_paths {
+        if let Ok(content) = std::fs::read_to_string(&path) {
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                // If user configured root theme as "light" or "dark"
+                if let Some(theme_str) = json.get("theme").and_then(|v| v.as_str()) {
+                    if theme_str.eq_ignore_ascii_case("light") {
+                        return Some(ThemeMode::Light);
+                    } else if theme_str.eq_ignore_ascii_case("dark") {
+                        return Some(ThemeMode::Dark);
+                    }
+                }
+
+                // Check default profile's colorScheme
+                let default_scheme_name = json
+                    .pointer("/profiles/defaults/colorScheme")
+                    .and_then(|v| v.as_str());
+
+                if let Some(scheme_name) = default_scheme_name {
+                    if let Some(schemes) = json.get("schemes").and_then(|v| v.as_array()) {
+                        for s in schemes {
+                            if s.get("name").and_then(|v| v.as_str()) == Some(scheme_name) {
+                                if let Some(bg) = s.get("background").and_then(|v| v.as_str()) {
+                                    if is_hex_color_light(bg) {
+                                        return Some(ThemeMode::Light);
+                                    } else {
+                                        return Some(ThemeMode::Dark);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Windows Terminal defaults to Campbell (dark background #0C0C0C)
+                return Some(ThemeMode::Dark);
             }
         }
     }
-    None
+
+    Some(ThemeMode::Dark)
+}
+
+#[cfg(windows)]
+fn is_hex_color_light(hex: &str) -> bool {
+    let clean = hex.trim().trim_start_matches('#');
+    if clean.len() == 6 {
+        if let (Ok(r), Ok(g), Ok(b)) = (
+            u8::from_str_radix(&clean[0..2], 16),
+            u8::from_str_radix(&clean[2..4], 16),
+            u8::from_str_radix(&clean[4..6], 16),
+        ) {
+            let lum = 0.2126 * (r as f32) + 0.7152 * (g as f32) + 0.0722 * (b as f32);
+            return lum > 140.0;
+        }
+    }
+    false
 }
 
 #[cfg(test)]

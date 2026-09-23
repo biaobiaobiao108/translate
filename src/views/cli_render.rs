@@ -273,10 +273,10 @@ fn render_sentence_card(
     }
 
     // Translated section
-    render_card_section("译文", theme.green, theme);
+    render_card_section("译文", theme.translation, theme);
     for line in wrap_display(translated, text_width) {
         let plain_line = format!("  {}", line);
-        let styled_line = format!("  {}", bold_color(&line, theme.green, theme));
+        let styled_line = format!("  {}", bold_color(&line, theme.translation, theme));
         render_content_line(&styled_line, str_width(&plain_line), theme);
     }
 
