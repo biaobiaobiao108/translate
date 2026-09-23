@@ -18,8 +18,6 @@ pub fn render_cli_output(output: &QueryOutput, mode: ThemeMode) {
     }
 }
 
-/// Render the history view with the same width-aware rules as query output.
-/// Keeping this here avoids a second, less readable renderer in `main.rs`.
 pub fn render_history_items(items: &[HistoryItem], only_favorites: bool, mode: ThemeMode) {
     let theme = mode.cli();
     let title = if only_favorites {
@@ -27,21 +25,20 @@ pub fn render_history_items(items: &[HistoryItem], only_favorites: bool, mode: T
     } else {
         "历史查询记录"
     };
+    let total_count = format!("共 {} 条", items.len());
+    let title_text = format!("{} · {}", title, total_count);
     let width = content_width();
 
     println!();
-    println!(
-        "  {}  {}",
-        bold_color(title, theme.cyan, &theme),
-        color(&format!("共 {} 条", items.len()), theme.muted, &theme)
-    );
-    println!("{}", divider(&theme));
+    render_card_header(&title_text, theme.cyan, &theme);
 
     if items.is_empty() {
         println!(
-            "  {}",
+            "  {}  {}",
+            border_bar(&theme),
             color("暂无记录。查询结果会自动保存在这里。", theme.muted, &theme)
         );
+        render_card_footer(&theme);
         println!();
         return;
     }
@@ -51,8 +48,8 @@ pub fn render_history_items(items: &[HistoryItem], only_favorites: bool, mode: T
         .map(|item| UnicodeWidthStr::width(item.created_at.as_str()))
         .max()
         .unwrap_or(1);
-    let query_width = if width >= 72 {
-        28.min(width.saturating_sub(timestamp_width + 9).max(1))
+    let query_width = if width >= 60 {
+        24.min(width.saturating_sub(timestamp_width + 10).max(1))
     } else {
         width
             .saturating_mul(2)
@@ -61,7 +58,7 @@ pub fn render_history_items(items: &[HistoryItem], only_favorites: bool, mode: T
             .clamp(1, width.max(1))
     };
     let summary_width = width
-        .saturating_sub(query_width + timestamp_width + 8)
+        .saturating_sub(query_width + timestamp_width + 10)
         .max(1);
 
     for item in items {
@@ -69,136 +66,170 @@ pub fn render_history_items(items: &[HistoryItem], only_favorites: bool, mode: T
         let query_padding =
             " ".repeat(query_width.saturating_sub(UnicodeWidthStr::width(query.as_str())));
         let icon = if item.is_favorite { "★" } else { "·" };
+        let icon_color = if item.is_favorite {
+            theme.yellow
+        } else {
+            theme.muted
+        };
         let summary_lines = wrap_display(&single_line(&item.result_summary), summary_width);
 
         for (line_index, line) in summary_lines.iter().enumerate() {
             if line_index == 0 {
                 println!(
-                    "  {} {}{}  {}  {}",
-                    color(icon, theme.yellow, &theme),
-                    color(&query, theme.foreground, &theme),
+                    "  {}  {} {}{}  {}  {}",
+                    border_bar(&theme),
+                    bold_color(icon, icon_color, &theme),
+                    bold_color(&query, theme.foreground, &theme),
                     query_padding,
                     color(line, theme.translation, &theme),
                     color(&item.created_at, theme.muted, &theme)
                 );
             } else {
                 println!(
-                    "  {} {}",
-                    " ".repeat(query_width + 5),
-                    color(line, theme.translation, &theme)
+                    "  {}  {}",
+                    border_bar(&theme),
+                    format!(
+                        "  {}{}",
+                        " ".repeat(query_width + 2),
+                        color(line, theme.translation, &theme)
+                    )
                 );
             }
         }
     }
+
+    render_card_footer(&theme);
     println!();
 }
 
 fn render_word_card(detail: &WordDetail, theme: &CliTheme) {
     println!();
+    render_card_header(&detail.word, theme.blue, theme);
 
-    println!(
-        "  {}",
-        badge(&format!("  {}  ", detail.word), theme.blue, theme)
-    );
-
-    let mut phonetics = Vec::new();
+    // Phonetics & Tags row
+    let mut phonetic_spans = Vec::new();
     if let Some(ref us) = detail.phonetic_us {
-        phonetics.push(format_phonetic("美", us, theme));
+        phonetic_spans.push(format_phonetic("美", us, theme));
     }
     if let Some(ref uk) = detail.phonetic_uk {
-        phonetics.push(format_phonetic("英", uk, theme));
+        phonetic_spans.push(format_phonetic("英", uk, theme));
     }
-    if !phonetics.is_empty() {
-        println!("  {}", phonetics.join("  "));
+
+    let mut header_info = Vec::new();
+    if !phonetic_spans.is_empty() {
+        header_info.push(phonetic_spans.join("  "));
     }
     if !detail.tags.is_empty() {
-        let tags = detail
+        let tags_str = detail
             .tags
             .iter()
-            .map(|tag| format!("[{}]", tag))
+            .map(|tag| color(&format!("[{}]", tag), theme.muted, theme))
             .collect::<Vec<_>>()
             .join(" ");
-        for line in wrap_display(&tags, content_width()) {
-            println!("  {}", color(&line, theme.muted, theme));
-        }
+        header_info.push(tags_str);
     }
 
-    println!("{}", divider(theme));
+    if !header_info.is_empty() {
+        println!("  {}  {}", border_bar(theme), header_info.join("    "));
+    }
 
+    // Definitions section
     if !detail.definitions.is_empty() {
-        println!("{}", format_section_title("词典释义", theme.green, theme));
-        let pos_width = 7;
-        let meaning_width = content_width().saturating_sub(pos_width + 4).max(1);
+        render_card_section("词典释义", theme.green, theme);
+        let max_pos_display_width = 8;
+        let meaning_width = content_width().saturating_sub(max_pos_display_width + 4).max(1);
 
         for definition in &detail.definitions {
-            let pos = if definition.pos.is_empty() {
+            let pos_raw = if definition.pos.is_empty() {
                 String::new()
             } else if definition.pos.ends_with('.') {
                 definition.pos.clone()
             } else {
                 format!("{}.", definition.pos)
             };
-            let pos = truncate_display_width(&pos, pos_width);
+            let pos_display = if pos_raw.is_empty() {
+                String::new()
+            } else {
+                format!("[{}]", pos_raw)
+            };
+            let pos_color_val = pos_color(&definition.pos, theme);
             let meaning = definition.meanings.join("；");
             let meaning_lines = wrap_display(&meaning, meaning_width);
 
             for (line_index, line) in meaning_lines.iter().enumerate() {
-                let pos_text = if line_index == 0 {
-                    format!("{:>width$}", pos, width = pos_width)
+                if line_index == 0 {
+                    let formatted_pos = format!("{:<width$}", pos_display, width = max_pos_display_width);
+                    println!(
+                        "  {}  {}  {}",
+                        border_bar(theme),
+                        bold_color(&formatted_pos, pos_color_val, theme),
+                        color(line, theme.foreground, theme)
+                    );
                 } else {
-                    " ".repeat(pos_width)
-                };
-                println!(
-                    "  {}  {}",
-                    bold_color(&pos_text, theme.orange, theme),
-                    color(line, theme.foreground, theme)
-                );
+                    println!(
+                        "  {}  {}  {}",
+                        border_bar(theme),
+                        " ".repeat(max_pos_display_width),
+                        color(line, theme.foreground, theme)
+                    );
+                }
             }
         }
     }
 
+    // Examples section
     if !detail.examples.is_empty() {
-        if !detail.definitions.is_empty() {
-            println!();
-        }
-        println!("{}", format_section_title("双语例句", theme.magenta, theme));
+        render_card_section("双语例句", theme.magenta, theme);
 
         for (index, example) in detail.examples.iter().enumerate() {
-            let number_prefix = format!("  {}. ", index + 1);
-            let continuation_prefix = " ".repeat(UnicodeWidthStr::width(number_prefix.as_str()));
-            let example_width = content_width()
-                .saturating_sub(UnicodeWidthStr::width(number_prefix.as_str()))
-                .max(1);
-            for (line_index, line) in wrap_display(&example.orig, example_width)
-                .iter()
-                .enumerate()
-            {
-                println!(
-                    "{}{}",
-                    if line_index == 0 {
-                        number_prefix.as_str()
-                    } else {
-                        continuation_prefix.as_str()
-                    },
-                    color(line, theme.blue, theme)
-                );
+            let number_prefix = format!("{}. ", index + 1);
+            let prefix_width = UnicodeWidthStr::width(number_prefix.as_str());
+            let example_width = content_width().saturating_sub(prefix_width + 2).max(1);
+
+            for (line_index, line) in wrap_display(&example.orig, example_width).iter().enumerate() {
+                if line_index == 0 {
+                    println!(
+                        "  {}  {} {}",
+                        border_bar(theme),
+                        bold_color(&number_prefix, theme.blue, theme),
+                        bold_color(line, theme.foreground, theme)
+                    );
+                } else {
+                    println!(
+                        "  {}  {} {}",
+                        border_bar(theme),
+                        " ".repeat(prefix_width),
+                        bold_color(line, theme.foreground, theme)
+                    );
+                }
             }
 
-            let translation_prefix = "     -> ";
-            let translation_width = content_width()
-                .saturating_sub(UnicodeWidthStr::width(translation_prefix))
-                .max(1);
-            for line in wrap_display(&example.trans, translation_width) {
-                println!(
-                    "{}{}",
-                    translation_prefix,
-                    color(&line, theme.translation, theme)
-                );
+            let arrow = "↳ ";
+            let arrow_width = UnicodeWidthStr::width(arrow);
+            let translation_width = content_width().saturating_sub(prefix_width + arrow_width + 2).max(1);
+
+            for (line_index, line) in wrap_display(&example.trans, translation_width).iter().enumerate() {
+                if line_index == 0 {
+                    println!(
+                        "  {}  {} {}{}",
+                        border_bar(theme),
+                        " ".repeat(prefix_width.saturating_sub(1)),
+                        color(arrow, theme.cyan, theme),
+                        color(line, theme.translation, theme)
+                    );
+                } else {
+                    println!(
+                        "  {}  {} {}",
+                        border_bar(theme),
+                        " ".repeat(prefix_width + arrow_width),
+                        color(line, theme.translation, theme)
+                    );
+                }
             }
         }
     }
 
-    println!("{}", divider(theme));
+    render_card_footer(theme);
     println!();
 }
 
@@ -210,69 +241,121 @@ fn render_sentence_card(
     theme: &CliTheme,
 ) {
     println!();
-    let badge_text = format!(
-        "  {} -> {} · Google 翻译  ",
+    let header_title = format!(
+        "Google 翻译 · {} ➔ {}",
         detected_lang.to_uppercase(),
         target_lang.to_uppercase()
     );
-    println!("  {}", badge(&badge_text, theme.magenta, theme));
-    println!("{}", divider(theme));
+    render_card_header(&header_title, theme.magenta, theme);
 
-    println!("{}", format_section_title("原文", theme.blue, theme));
-    let text_width = content_width().saturating_sub(2).max(1);
+    // Original section
+    println!(
+        "  {}  {}",
+        border_bar(theme),
+        bold_color("原文", theme.blue, theme)
+    );
+    let text_width = content_width().saturating_sub(4).max(1);
     for line in wrap_display(original, text_width) {
-        println!("  {}", color(&line, theme.foreground, theme));
+        println!(
+            "  {}    {}",
+            border_bar(theme),
+            color(&line, theme.foreground, theme)
+        );
     }
 
-    println!();
-    println!("{}", format_section_title("译文", theme.green, theme));
+    // Translated section
+    println!("  {}", border_bar(theme));
+    println!(
+        "  {}  {}",
+        border_bar(theme),
+        bold_color("译文", theme.green, theme)
+    );
     for line in wrap_display(translated, text_width) {
-        println!("  {}", color(&line, theme.green, theme));
+        println!(
+            "  {}    {}",
+            border_bar(theme),
+            bold_color(&line, theme.green, theme)
+        );
     }
 
-    println!("{}", divider(theme));
+    render_card_footer(theme);
     println!();
 }
 
-fn format_section_title(label: &str, color_value: Rgb, theme: &CliTheme) -> String {
-    badge(&format!("  {}  ", label), color_value, theme)
+fn render_card_header(title: &str, title_color: Rgb, theme: &CliTheme) {
+    let title_width = UnicodeWidthStr::width(title);
+    let total_width = card_width();
+    let remaining = total_width.saturating_sub(title_width + 5).max(2);
+
+    println!(
+        "  {}{}{}",
+        color("╭─ ", theme.border, theme),
+        bold_color(title, title_color, theme),
+        color(&format!(" {}", "─".repeat(remaining)), theme.border, theme)
+    );
+}
+
+fn render_card_section(title: &str, section_color: Rgb, theme: &CliTheme) {
+    let title_width = UnicodeWidthStr::width(title);
+    let total_width = card_width();
+    let remaining = total_width.saturating_sub(title_width + 5).max(2);
+
+    println!(
+        "  {}{}{}",
+        color("├─ ", theme.border, theme),
+        bold_color(title, section_color, theme),
+        color(&format!(" {}", "─".repeat(remaining)), theme.border, theme)
+    );
+}
+
+fn render_card_footer(theme: &CliTheme) {
+    let total_width = card_width();
+    let line_count = total_width.saturating_sub(1).max(2);
+    println!(
+        "  {}",
+        color(&format!("╰{}", "─".repeat(line_count)), theme.border, theme)
+    );
+}
+
+fn border_bar(theme: &CliTheme) -> String {
+    color("│", theme.border, theme)
 }
 
 fn format_phonetic(label: &str, raw: &str, theme: &CliTheme) -> String {
     let clean = raw.trim_matches(|c| c == '/' || c == '[' || c == ']' || c == ' ');
-    bold_color(&format!("{} [{}]", label, clean), theme.cyan, theme)
+    format!(
+        "{} {}",
+        color(label, theme.muted, theme),
+        bold_color(&format!("[{}]", clean), theme.cyan, theme)
+    )
 }
 
-fn badge(text: &str, color_value: Rgb, theme: &CliTheme) -> String {
-    let padded = text.to_string();
-    if theme.mode == ThemeMode::Auto {
-        padded.bold().to_string()
+fn pos_color(pos: &str, theme: &CliTheme) -> Rgb {
+    let lower = pos.to_lowercase();
+    if lower.starts_with('n') {
+        theme.orange
+    } else if lower.starts_with('v') {
+        theme.blue
+    } else if lower.starts_with("adj") || (lower.starts_with('a') && !lower.starts_with("adv")) {
+        theme.green
+    } else if lower.starts_with("adv") {
+        theme.magenta
+    } else if lower.starts_with("prep") || lower.starts_with("conj") || lower.starts_with("pron") {
+        theme.cyan
     } else {
-        padded
-            .bold()
-            .truecolor(color_value.0, color_value.1, color_value.2)
-            .on_truecolor(theme.selection.0, theme.selection.1, theme.selection.2)
-            .to_string()
+        theme.yellow
     }
 }
 
-fn color(text: &str, color_value: Rgb, theme: &CliTheme) -> String {
-    if theme.mode == ThemeMode::Auto {
-        text.to_string()
-    } else {
-        text.truecolor(color_value.0, color_value.1, color_value.2)
-            .to_string()
-    }
+fn color(text: &str, color_value: Rgb, _theme: &CliTheme) -> String {
+    text.truecolor(color_value.0, color_value.1, color_value.2)
+        .to_string()
 }
 
-fn bold_color(text: &str, color_value: Rgb, theme: &CliTheme) -> String {
-    if theme.mode == ThemeMode::Auto {
-        text.bold().to_string()
-    } else {
-        text.bold()
-            .truecolor(color_value.0, color_value.1, color_value.2)
-            .to_string()
-    }
+fn bold_color(text: &str, color_value: Rgb, _theme: &CliTheme) -> String {
+    text.bold()
+        .truecolor(color_value.0, color_value.1, color_value.2)
+        .to_string()
 }
 
 fn single_line(text: &str) -> String {
@@ -286,18 +369,11 @@ fn terminal_width() -> usize {
 }
 
 fn card_width() -> usize {
-    terminal_width().saturating_sub(4).clamp(1, 100)
+    terminal_width().saturating_sub(4).clamp(30, 88)
 }
 
 fn content_width() -> usize {
-    card_width().saturating_sub(4).max(1)
-}
-
-fn divider(theme: &CliTheme) -> String {
-    format!(
-        "  {}",
-        color(&"─".repeat(card_width()), theme.border, theme)
-    )
+    card_width().saturating_sub(6).max(20)
 }
 
 fn truncate_display_width(text: &str, max_width: usize) -> String {
@@ -368,13 +444,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn auto_theme_keeps_cli_body_uncolored() {
-        let theme = ThemeMode::Auto.cli();
-        assert_eq!(color("正文", theme.foreground, &theme), "正文");
-        assert_eq!(bold_color("标题", theme.cyan, &theme), "标题");
-    }
-
-    #[test]
     fn fixed_themes_have_distinct_foreground_palettes() {
         let dark = ThemeMode::Dark.cli();
         let light = ThemeMode::Light.cli();
@@ -393,5 +462,15 @@ mod tests {
     #[test]
     fn truncates_by_display_width() {
         assert_eq!(truncate_display_width("你好世界", 5), "你好…");
+    }
+
+    #[test]
+    fn pos_color_selection() {
+        let theme = ThemeMode::Dark.cli();
+        assert_eq!(pos_color("n.", &theme), theme.orange);
+        assert_eq!(pos_color("v.", &theme), theme.blue);
+        assert_eq!(pos_color("adj.", &theme), theme.green);
+        assert_eq!(pos_color("adv.", &theme), theme.magenta);
+        assert_eq!(pos_color("prep.", &theme), theme.cyan);
     }
 }

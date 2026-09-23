@@ -8,6 +8,7 @@ use unicode_width::UnicodeWidthChar;
 
 use crate::api::dict::QueryOutput;
 use crate::db::{Database, HistoryItem};
+use crate::views::theme::ThemeMode;
 
 const QUERY_CACHE_CAPACITY: usize = 32;
 
@@ -54,6 +55,7 @@ pub struct App<'a> {
     pub history_filter: HistoryFilter,
 
     pub show_help: bool,
+    pub theme_mode: ThemeMode,
     pub db: Database,
     pub client: Client,
     next_search_id: u64,
@@ -64,7 +66,7 @@ pub struct App<'a> {
 }
 
 impl<'a> App<'a> {
-    pub fn new(client: Client, db: Database) -> Self {
+    pub fn new(client: Client, db: Database, theme_mode: ThemeMode) -> Self {
         let (history, history_error) = match db.list_history(false, 100) {
             Ok(items) => (items, None),
             Err(error) => (Vec::new(), Some(format!("历史记录加载失败: {}", error))),
@@ -87,6 +89,7 @@ impl<'a> App<'a> {
             history_selected_index: 0,
             history_filter: HistoryFilter::All,
             show_help: false,
+            theme_mode,
             db,
             client,
             next_search_id: 0,
@@ -94,6 +97,26 @@ impl<'a> App<'a> {
             active_search_cancel: None,
             query_cache: HashMap::new(),
             query_cache_order: VecDeque::new(),
+        }
+    }
+
+    pub fn toggle_theme(&mut self) {
+        let current_resolved = self.theme_mode.resolved();
+        let next_mode = match current_resolved {
+            ThemeMode::Dark => ThemeMode::Light,
+            ThemeMode::Light => ThemeMode::Dark,
+            ThemeMode::Auto => ThemeMode::Light,
+        };
+        self.theme_mode = next_mode;
+        let mode_desc = match next_mode {
+            ThemeMode::Dark => "深色 (Dark)",
+            ThemeMode::Light => "浅色 (Light)",
+            ThemeMode::Auto => "自动 (Auto)",
+        };
+        if let Err(e) = self.db.set_config("theme", &next_mode.to_string()) {
+            self.set_toast(format!("已切换至 {}（保存失败: {}）", mode_desc, e));
+        } else {
+            self.set_toast(format!("已切换至 {} 主题并保存偏好", mode_desc));
         }
     }
 
@@ -376,7 +399,7 @@ mod tests {
     fn test_initial_mode_and_toast() {
         let db = Database::open(":memory:").unwrap();
         let client = Client::new();
-        let mut app = App::new(client, db);
+        let mut app = App::new(client, db, ThemeMode::Dark);
 
         assert_eq!(app.mode, InputMode::Insert);
         assert_eq!(app.focused_pane, FocusedPane::Input);
@@ -394,9 +417,24 @@ mod tests {
     #[test]
     fn preserves_trailing_newline_when_loading_history() {
         let db = Database::open(":memory:").unwrap();
-        let mut app = App::new(Client::new(), db);
+        let mut app = App::new(Client::new(), db, ThemeMode::Dark);
 
         app.set_input_string("a\n");
         assert_eq!(app.get_input_string(), "a\n");
+    }
+
+    #[test]
+    fn toggles_theme_and_persists() {
+        let db = Database::open(":memory:").unwrap();
+        let mut app = App::new(Client::new(), db, ThemeMode::Dark);
+        assert_eq!(app.theme_mode, ThemeMode::Dark);
+
+        app.toggle_theme();
+        assert_eq!(app.theme_mode, ThemeMode::Light);
+        assert_eq!(app.db.get_config("theme").unwrap().as_deref(), Some("light"));
+
+        app.toggle_theme();
+        assert_eq!(app.theme_mode, ThemeMode::Dark);
+        assert_eq!(app.db.get_config("theme").unwrap().as_deref(), Some("dark"));
     }
 }

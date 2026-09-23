@@ -31,8 +31,9 @@ async fn run() -> Result<()> {
     // 历史记录查看不需要创建 HTTP 客户端，避免无关的代理配置影响本地操作。
     if args.show_history || args.show_favorites {
         let db = Database::init()?;
+        let theme = resolve_theme(args.theme, &db);
         let items = db.list_history(args.show_favorites, 50)?;
-        render_history_items(&items, args.show_favorites, args.theme);
+        render_history_items(&items, args.show_favorites, theme);
         return Ok(());
     }
 
@@ -48,19 +49,37 @@ async fn run() -> Result<()> {
 
     let client = build_client(args.proxy.as_deref())?;
     let db = Database::init()?;
+    let theme = resolve_theme(args.theme, &db);
 
     if !args.sentence && args.query.len() == 1 && args.query[0] == "i" {
-        tui::run_tui(client, db, args.theme).await?;
+        tui::run_tui(client, db, theme).await?;
         return Ok(());
     }
 
     let query_text = args.query.join(" ");
     let output = smart_query(&client, &query_text, args.sentence).await?;
-    render_cli_output(&output, args.theme);
+    render_cli_output(&output, theme);
 
     if let Err(error) = db.add_record(&query_text, &output.summary()) {
         eprintln!("[警告] 历史记录保存失败: {}", error);
     }
 
     Ok(())
+}
+
+fn resolve_theme(
+    cli_theme: Option<views::theme::ThemeMode>,
+    db: &Database,
+) -> views::theme::ThemeMode {
+    if let Some(theme) = cli_theme {
+        return theme;
+    }
+
+    if let Ok(Some(saved)) = db.get_config("theme") {
+        if let Ok(theme) = saved.parse::<views::theme::ThemeMode>() {
+            return theme;
+        }
+    }
+
+    views::theme::ThemeMode::Auto
 }

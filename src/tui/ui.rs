@@ -26,13 +26,11 @@ pub fn input_content_width(terminal_width: u16) -> u16 {
     pane_width.saturating_sub(4).max(1)
 }
 
-pub fn render(f: &mut Frame, app: &mut App, theme_mode: ThemeMode) {
+pub fn render(f: &mut Frame, app: &mut App) {
     let area = f.area();
     let compact = area.width < WIDE_LAYOUT_MIN_WIDTH || area.height < COMPACT_LAYOUT_MIN_HEIGHT;
-    let theme = theme_mode.tui();
+    let theme = app.theme_mode.tui();
 
-    // Auto mode uses Color::Reset here, allowing the terminal to provide its
-    // own background and default foreground.
     f.render_widget(
         Block::default().style(Style::default().bg(theme.background)),
         area,
@@ -82,12 +80,17 @@ fn render_header(f: &mut Frame, app: &App, area: Rect, theme: &Theme) {
         FocusedPane::Input => "原文",
         FocusedPane::Result => "译文",
     };
+    let theme_desc = match app.theme_mode.resolved() {
+        ThemeMode::Dark => "Dark",
+        ThemeMode::Light => "Light",
+        ThemeMode::Auto => "Auto",
+    };
 
     let line = Line::from(vec![
         Span::styled(
             " tran ",
             Style::default()
-                .fg(Color::Black)
+                .fg(theme.badge_fg)
                 .bg(theme.cyan)
                 .add_modifier(Modifier::BOLD),
         ),
@@ -101,6 +104,11 @@ fn render_header(f: &mut Frame, app: &App, area: Rect, theme: &Theme) {
         Span::styled(
             format!(" {} · {} ", focus, state),
             Style::default().fg(theme.secondary),
+        ),
+        Span::styled("·", Style::default().fg(theme.border)),
+        Span::styled(
+            format!(" 主题: {} ", theme_desc),
+            Style::default().fg(theme.comment),
         ),
     ]);
     f.render_widget(
@@ -191,7 +199,7 @@ fn render_input_editor(f: &mut Frame, app: &mut App, area: Rect, theme: &Theme) 
     app.textarea
         .set_cursor_style(if is_focused && app.mode == InputMode::Insert {
             Style::default()
-                .fg(Color::Black)
+                .fg(theme.badge_fg)
                 .bg(theme.cyan)
                 .add_modifier(Modifier::BOLD)
         } else if is_focused && app.mode == InputMode::Normal {
@@ -355,7 +363,7 @@ fn render_result_view(f: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
                         Span::styled(&example.orig, Style::default().fg(theme.blue)),
                     ]));
                     lines.push(Line::from(vec![
-                        Span::styled("     -> ", Style::default().fg(theme.comment)),
+                        Span::styled("     ↳ ", Style::default().fg(theme.cyan)),
                         Span::styled(&example.trans, Style::default().fg(theme.secondary)),
                     ]));
                 }
@@ -612,7 +620,7 @@ fn render_status_bar(f: &mut Frame, app: &App, area: Rect, compact: bool, theme:
     } else if compact {
         match app.mode {
             InputMode::Insert => "Esc 导航 · Enter 查询 · Shift+Enter 换行 · Tab 切换",
-            InputMode::Normal => "Tab 切换 · j/k 滚动 · h 历史 · ? 帮助 · q 退出",
+            InputMode::Normal => "Tab 切换 · j/k 滚动 · t 主题 · h 历史 · ? 帮助 · q 退出",
         }
     } else {
         match app.mode {
@@ -621,10 +629,10 @@ fn render_status_bar(f: &mut Frame, app: &App, area: Rect, compact: bool, theme:
             }
             InputMode::Normal => match app.focused_pane {
                 FocusedPane::Input => {
-                    "i/a 编辑 · c 清空并输入 · Enter 查询 · Tab 切换 · h 历史 · ? 帮助"
+                    "i/a 编辑 · c 清空并输入 · Enter 查询 · Tab 切换 · t 主题 · h 历史 · ? 帮助"
                 }
                 FocusedPane::Result => {
-                    "j/k 滚动 · g/G 顶/底 · i 编辑 · Tab 切换 · y 复制 · h 历史 · ? 帮助"
+                    "j/k 滚动 · g/G 顶/底 · i 编辑 · Tab 切换 · y 复制 · t 主题 · h 历史 · ? 帮助"
                 }
             },
         }
@@ -676,6 +684,7 @@ fn render_help_popup(f: &mut Frame, theme: &Theme) {
         shortcut_line("g / G", "译文区跳到顶部 / 底部", theme),
         shortcut_line("d / u", "译文区向下 / 向上翻页", theme),
         shortcut_line("y", "复制当前结果", theme),
+        shortcut_line("t", "快速切换深色 / 浅色主题", theme),
         shortcut_line("h", "打开历史记录与生词本", theme),
         shortcut_line("? / q", "帮助 / 退出", theme),
         Line::from(""),
@@ -783,9 +792,9 @@ mod tests {
             let backend = TestBackend::new(width, height);
             let mut terminal = Terminal::new(backend).unwrap();
             let db = Database::open(":memory:").unwrap();
-            let mut app = App::new(Client::new(), db);
+            let mut app = App::new(Client::new(), db, ThemeMode::Auto);
             terminal
-                .draw(|frame| render(frame, &mut app, ThemeMode::Auto))
+                .draw(|frame| render(frame, &mut app))
                 .expect("responsive layout should render");
         }
     }

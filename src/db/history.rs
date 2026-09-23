@@ -7,7 +7,7 @@ use crate::error::{AppError, Result};
 
 const MAX_UNFAVORITED_HISTORY: i64 = 1_000;
 const MAX_SUMMARY_CHARS: usize = 2_000;
-const SCHEMA_VERSION: i64 = 2;
+const SCHEMA_VERSION: i64 = 3;
 
 #[derive(Debug, Clone)]
 pub struct HistoryItem {
@@ -144,6 +144,27 @@ impl Database {
         Ok(())
     }
 
+    pub fn get_config(&self, key: &str) -> Result<Option<String>> {
+        let value = self
+            .conn
+            .query_row(
+                "SELECT value FROM config WHERE key = ?1",
+                params![key],
+                |row| row.get(0),
+            )
+            .optional()?;
+        Ok(value)
+    }
+
+    pub fn set_config(&self, key: &str, value: &str) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO config (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![key, value],
+        )?;
+        Ok(())
+    }
+
     fn prune_old_history(&self) -> Result<()> {
         self.conn.execute(
             "DELETE FROM history
@@ -181,6 +202,15 @@ fn migrate(conn: &Connection) -> Result<()> {
             "DROP INDEX IF EXISTS idx_history_favorite_id;
              CREATE INDEX IF NOT EXISTS idx_history_favorite_created
                  ON history (is_favorite, created_at DESC, id DESC);",
+        )?;
+        conn.pragma_update(None, "user_version", 2i64)?;
+    }
+    if version < 3 {
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS config (
+                 key TEXT PRIMARY KEY,
+                 value TEXT NOT NULL
+             );",
         )?;
         conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
     }
@@ -243,5 +273,17 @@ mod tests {
         assert_eq!(db.list_history(true, 10).unwrap().len(), 1);
         db.delete_record(id).unwrap();
         assert!(db.list_history(false, 10).unwrap().is_empty());
+    }
+
+    #[test]
+    fn config_store_and_retrieve() {
+        let db = Database::open(":memory:").unwrap();
+        assert_eq!(db.get_config("theme").unwrap(), None);
+
+        db.set_config("theme", "light").unwrap();
+        assert_eq!(db.get_config("theme").unwrap().as_deref(), Some("light"));
+
+        db.set_config("theme", "dark").unwrap();
+        assert_eq!(db.get_config("theme").unwrap().as_deref(), Some("dark"));
     }
 }

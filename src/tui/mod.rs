@@ -84,12 +84,12 @@ pub async fn run_tui(client: Client, db: Database, theme_mode: ThemeMode) -> Res
     let backend = CrosstermBackend::new(io::stdout());
     let mut terminal = Terminal::new(backend)?;
 
-    let mut app = App::new(client, db);
+    let mut app = App::new(client, db, theme_mode);
     let mut events = EventHandler::new(Duration::from_millis(150));
     let event_sender = events.sender();
 
     loop {
-        terminal.draw(|frame| ui::render(frame, &mut app, theme_mode))?;
+        terminal.draw(|frame| ui::render(frame, &mut app))?;
 
         let Some(event) = events.next().await else {
             break;
@@ -241,6 +241,10 @@ pub async fn run_tui(client: Client, db: Database, theme_mode: ThemeMode) -> Res
                             }
                             KeyCode::Char('y') => {
                                 app.copy_result_to_clipboard();
+                                continue;
+                            }
+                            KeyCode::Char('t') => {
+                                app.toggle_theme();
                                 continue;
                             }
                             KeyCode::Tab => {
