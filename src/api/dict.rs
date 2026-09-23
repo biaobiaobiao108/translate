@@ -1,4 +1,4 @@
-use crate::api::google::translate_text;
+use crate::api::microsoft::translate_text;
 use crate::error::{AppError, Result};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -216,7 +216,7 @@ pub async fn smart_query(
         }
     }
 
-    // 句子翻译或未命中词典，调用 Google 翻译
+    // 句子翻译或未命中词典，调用微软翻译
     let trans = translate_text(client, trimmed, None, None).await?;
     Ok(QueryOutput::Sentence {
         original: trans.original,

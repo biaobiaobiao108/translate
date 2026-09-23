@@ -14,7 +14,7 @@ tran 是一个基于 Rust 开发的高性能、现代化 CLI / TUI 翻译工具�
 - **TUI 框架**：ratatui (0.29), crossterm (0.28), tui-textarea (0.7.0)
 - **网络与接口**：
   - reqwest (0.12, rustls-tls)：支持代理与系统环境检测；
-  - Google 公共翻译接口：智能中英互译；
+  - 微软翻译接口 (Bing Translator)：智能中英互译，国内直连免翻墙；
   - 有道开放词典 JSON 接口：权威英美音标、词性分类释义、中英权威双语例句。
 - **本地存储**：rusqlite (SQLite3 bundled)，自动存储历史记录与收藏生词本至 ~/.translate/history.db。
 - **文字与光标**：unicode-width 精确度量终端全角/半角字符宽度，严格同步物理硬件光标。
@@ -32,7 +32,7 @@ tran 是一个基于 Rust 开发的高性能、现代化 CLI / TUI 翻译工具�
 │   ├── api/
 │   │   ├── client.rs        # HTTP 客户端封装（代理支持）
 │   │   ├── dict.rs          # 词典查询与智能分流
-│   │   ├── google.rs        # Google 翻译接口
+│   │   ├── microsoft.rs     # 微软翻译接口
 │   │   └── mod.rs
 │   ├── cli/
 │   │   ├── args.rs          # 命令行参数解析（clap）

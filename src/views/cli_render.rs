@@ -257,7 +257,7 @@ fn render_sentence_card(
 ) {
     println!();
     let header_title = format!(
-        "Google 翻译 · {} ➔ {}",
+        "微软翻译 · {} ➔ {}",
         detected_lang.to_uppercase(),
         target_lang.to_uppercase()
     );

@@ -17,7 +17,7 @@ pub struct CliArgs {
     )]
     pub theme: Option<ThemeMode>,
 
-    /// 强制以句子模式进行 Google 翻译
+    /// 强制以句子模式进行微软翻译
     #[arg(short = 's', long = "sentence", help = "强制将输入作为整句进行翻译")]
     pub sentence: bool,
 

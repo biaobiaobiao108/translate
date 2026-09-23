@@ -381,7 +381,7 @@ fn render_result_view(f: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
         }) => {
             let mut lines = vec![Line::from(Span::styled(
                 format!(
-                    " {} -> {} · Google 翻译 ",
+                    " {} -> {} · 微软翻译 ",
                     detected_lang.to_uppercase(),
                     target_lang.to_uppercase()
                 ),
