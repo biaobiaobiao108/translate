@@ -54,14 +54,11 @@ pub fn render_history_items(items: &[HistoryItem], only_favorites: bool, mode: T
             .unwrap_or(1)
             .clamp(1, iw.max(1))
     };
-    let summary_width = iw
-        .saturating_sub(query_width + timestamp_width + 6)
-        .max(1);
+    let summary_width = iw.saturating_sub(query_width + timestamp_width + 6).max(1);
 
     for item in items {
         let query = truncate_display_width(&single_line(&item.query), query_width);
-        let query_padding =
-            " ".repeat(query_width.saturating_sub(str_width(query.as_str())));
+        let query_padding = " ".repeat(query_width.saturating_sub(str_width(query.as_str())));
         let icon = if item.is_favorite { "★" } else { "·" };
         let icon_color = if item.is_favorite {
             theme.yellow
@@ -137,7 +134,11 @@ fn render_word_card(detail: &WordDetail, theme: &CliTheme) {
 
     if phonetics_width + gap + tags_width <= inner_width() && !plain_tags.is_empty() {
         let plain = format!("{}    {}", plain_phonetics.join("  "), plain_tags.join(" "));
-        let styled = format!("{}    {}", styled_phonetics.join("  "), styled_tags.join(" "));
+        let styled = format!(
+            "{}    {}",
+            styled_phonetics.join("  "),
+            styled_tags.join(" ")
+        );
         render_content_line(&styled, str_width(&plain), theme);
     } else {
         if !plain_phonetics.is_empty() {
@@ -157,7 +158,9 @@ fn render_word_card(detail: &WordDetail, theme: &CliTheme) {
     if !detail.definitions.is_empty() {
         render_card_section("词典释义", theme.green, theme);
         let max_pos_display_width = 8;
-        let meaning_width = inner_width().saturating_sub(max_pos_display_width + 2).max(1);
+        let meaning_width = inner_width()
+            .saturating_sub(max_pos_display_width + 2)
+            .max(1);
 
         for definition in &detail.definitions {
             let pos_raw = if definition.pos.is_empty() {
@@ -178,15 +181,18 @@ fn render_word_card(detail: &WordDetail, theme: &CliTheme) {
 
             for (line_index, line) in meaning_lines.iter().enumerate() {
                 if line_index == 0 {
-                    let plain_pos = format!("{:<width$}", pos_display, width = max_pos_display_width);
+                    let plain_pos =
+                        format!("{:<width$}", pos_display, width = max_pos_display_width);
                     let styled_pos = bold_color(&plain_pos, pos_color_val, theme);
                     let plain_line = format!("{}  {}", plain_pos, line);
-                    let styled_line = format!("{}  {}", styled_pos, color(line, theme.foreground, theme));
+                    let styled_line =
+                        format!("{}  {}", styled_pos, color(line, theme.foreground, theme));
                     render_content_line(&styled_line, str_width(&plain_line), theme);
                 } else {
                     let plain_indent = " ".repeat(max_pos_display_width + 2);
                     let plain_line = format!("{}{}", plain_indent, line);
-                    let styled_line = format!("{}{}", plain_indent, color(line, theme.foreground, theme));
+                    let styled_line =
+                        format!("{}{}", plain_indent, color(line, theme.foreground, theme));
                     render_content_line(&styled_line, str_width(&plain_line), theme);
                 }
             }
@@ -202,7 +208,10 @@ fn render_word_card(detail: &WordDetail, theme: &CliTheme) {
             let prefix_width = str_width(number_prefix.as_str());
             let example_width = inner_width().saturating_sub(prefix_width).max(1);
 
-            for (line_index, line) in wrap_display(&example.orig, example_width).iter().enumerate() {
+            for (line_index, line) in wrap_display(&example.orig, example_width)
+                .iter()
+                .enumerate()
+            {
                 if line_index == 0 {
                     let plain_line = format!("{}{}", number_prefix, line);
                     let styled_line = format!(
@@ -214,7 +223,8 @@ fn render_word_card(detail: &WordDetail, theme: &CliTheme) {
                 } else {
                     let indent = " ".repeat(prefix_width);
                     let plain_line = format!("{}{}", indent, line);
-                    let styled_line = format!("{}{}", indent, bold_color(line, theme.foreground, theme));
+                    let styled_line =
+                        format!("{}{}", indent, bold_color(line, theme.foreground, theme));
                     render_content_line(&styled_line, str_width(&plain_line), theme);
                 }
             }
@@ -222,7 +232,9 @@ fn render_word_card(detail: &WordDetail, theme: &CliTheme) {
             let arrow = "↳ ";
             let arrow_width = str_width(arrow);
             let trans_indent = " ".repeat(prefix_width);
-            let trans_width = inner_width().saturating_sub(prefix_width + arrow_width).max(1);
+            let trans_width = inner_width()
+                .saturating_sub(prefix_width + arrow_width)
+                .max(1);
 
             for (line_index, line) in wrap_display(&example.trans, trans_width).iter().enumerate() {
                 if line_index == 0 {
@@ -237,7 +249,8 @@ fn render_word_card(detail: &WordDetail, theme: &CliTheme) {
                 } else {
                     let indent = " ".repeat(prefix_width + arrow_width);
                     let plain_line = format!("{}{}", indent, line);
-                    let styled_line = format!("{}{}", indent, color(line, theme.translation, theme));
+                    let styled_line =
+                        format!("{}{}", indent, color(line, theme.translation, theme));
                     render_content_line(&styled_line, str_width(&plain_line), theme);
                 }
             }
@@ -464,9 +477,7 @@ mod tests {
     #[test]
     fn wraps_wide_characters_without_exceeding_width() {
         let lines = wrap_display("你好世界 hello", 6);
-        assert!(lines
-            .iter()
-            .all(|line| str_width(line.as_str()) <= 6));
+        assert!(lines.iter().all(|line| str_width(line.as_str()) <= 6));
         assert_eq!(lines.join(""), "你好世界 hello");
     }
 

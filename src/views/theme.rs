@@ -206,7 +206,10 @@ fn detect_windows_terminal_theme() -> Option<ThemeMode> {
             "{}\\Packages\\Microsoft.WindowsTerminal_8wekyb3d8bbwe\\LocalState\\settings.json",
             local_app_data
         ),
-        format!("{}\\Microsoft\\Windows Terminal\\settings.json", local_app_data),
+        format!(
+            "{}\\Microsoft\\Windows Terminal\\settings.json",
+            local_app_data
+        ),
     ];
 
     for path in candidate_paths {

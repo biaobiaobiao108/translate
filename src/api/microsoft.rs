@@ -67,7 +67,10 @@ fn normalize_lang_code(code: &str) -> &str {
 }
 
 async fn fetch_bing_auth(client: &Client) -> Result<BingAuth> {
-    let endpoints = ["https://cn.bing.com/translator", "https://www.bing.com/translator"];
+    let endpoints = [
+        "https://cn.bing.com/translator",
+        "https://www.bing.com/translator",
+    ];
     let mut last_error = None;
 
     for url in endpoints {
@@ -109,12 +112,11 @@ fn parse_bing_html_auth(html: &str) -> Option<BingAuth> {
         let start = idx + 4;
         let end = html[start..].find('"')? + start;
         html[start..end].to_string()
-    } else if let Some(idx) = html.find("_IG=\"") {
+    } else {
+        let idx = html.find("_IG=\"")?;
         let start = idx + 5;
         let end = html[start..].find('"')? + start;
         html[start..end].to_string()
-    } else {
-        return None;
     };
 
     // 2. Extract IID (fallback to translator.5023 if not found)
@@ -201,7 +203,10 @@ fn parse_bing_response(value: &Value) -> Result<(String, String)> {
 
     if let Some(error_msg) = value.get("errorMessage").and_then(Value::as_str) {
         if !error_msg.is_empty() {
-            return Err(AppError::Protocol(format!("微软翻译服务错误: {}", error_msg)));
+            return Err(AppError::Protocol(format!(
+                "微软翻译服务错误: {}",
+                error_msg
+            )));
         }
     }
 
@@ -261,11 +266,10 @@ pub async fn translate_text(
         if status.is_success() {
             if let Ok(json_value) = serde_json::from_str::<Value>(&body_text) {
                 // If Bing returned error code (e.g. 400 token expired)
-                if json_value.get("statusCode").and_then(Value::as_i64) == Some(400) {
-                    if !retry_done {
-                        retry_done = true;
-                        continue;
-                    }
+                if json_value.get("statusCode").and_then(Value::as_i64) == Some(400) && !retry_done
+                {
+                    retry_done = true;
+                    continue;
                 }
 
                 let (translated, detected_lang) = parse_bing_response(&json_value)?;

@@ -431,7 +431,10 @@ mod tests {
 
         app.toggle_theme();
         assert_eq!(app.theme_mode, ThemeMode::Light);
-        assert_eq!(app.db.get_config("theme").unwrap().as_deref(), Some("light"));
+        assert_eq!(
+            app.db.get_config("theme").unwrap().as_deref(),
+            Some("light")
+        );
 
         app.toggle_theme();
         assert_eq!(app.theme_mode, ThemeMode::Dark);

@@ -10,11 +10,7 @@ use crate::views::theme::ThemeMode;
 )]
 pub struct CliArgs {
     /// 设置终端配色：auto（智能检测）、dark（深色）或 light（浅色）
-    #[arg(
-        long = "theme",
-        value_enum,
-        help = "设置终端主题：auto、dark 或 light"
-    )]
+    #[arg(long = "theme", value_enum, help = "设置终端主题：auto、dark 或 light")]
     pub theme: Option<ThemeMode>,
 
     /// 强制以句子模式进行微软翻译
