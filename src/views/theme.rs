@@ -84,7 +84,7 @@ impl ThemeMode {
     pub fn tui(self) -> Theme {
         match self.resolved() {
             Self::Auto | Self::Dark => Theme {
-                background: Color::Rgb(26, 27, 38),
+                background: Color::Reset,
                 foreground: Color::Rgb(230, 237, 243),
                 secondary: Color::Rgb(192, 202, 245),
                 blue: Color::Rgb(122, 162, 247),
@@ -101,7 +101,7 @@ impl ThemeMode {
                 badge_fg: Color::Rgb(26, 27, 38),
             },
             Self::Light => Theme {
-                background: Color::Rgb(245, 245, 247),
+                background: Color::Reset,
                 foreground: Color::Rgb(55, 60, 84),
                 secondary: Color::Rgb(76, 85, 120),
                 blue: Color::Rgb(46, 86, 173),
@@ -239,7 +239,8 @@ mod tests {
     fn fixed_themes_define_distinct_palettes() {
         let dark = ThemeMode::Dark.tui();
         let light = ThemeMode::Light.tui();
-        assert_ne!(dark.background, light.background);
+        assert_eq!(dark.background, Color::Reset);
+        assert_eq!(light.background, Color::Reset);
         assert_ne!(dark.foreground, light.foreground);
     }
 
