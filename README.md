@@ -28,10 +28,8 @@
 - ⚡ **CLI 极速秒级查词**：智能分流单词与长句。查词立显权威英美双音标、词性分类详尽释义与中英权威双语例句。
 - 🎨 **自适应终端主题**：默认 `auto` 模式根据终端环境选择对应的高对比字体颜色，也可通过 `--theme dark` 使用 Tokyo Night 深色主题，或通过 `--theme light` 使用浅色高对比主题。
 - 🔎 **高可读终端排版**：CLI 按中英文实际显示宽度换行，并根据终端明暗背景选择对应高对比字体颜色，减少不同终端字体与背景造成的阅读问题。
-- ⭐ **本地历史与收藏查看**：轻量 SQLite 本地持久化，支持去重、自动保留最近记录、历史回溯与收藏过滤。新安装使用平台数据目录，旧版本的 `~/.translate/history.db` 会继续沿用。
+- 🧩 **无状态 CLI 工作流**：查询结束后不写入本地数据库，不产生额外数据目录，适合临时查询和脚本调用。
 - 🌐 **代理与环境感知**：支持 `--proxy` 参数或自动感知系统环境变量（HTTP / SOCKS5），网络访问无缝流畅。
-
-新安装的数据目录遵循系统约定：Windows 使用 `%LOCALAPPDATA%\\tran`，macOS 使用 `~/Library/Application Support/tran`，Linux 使用 `$XDG_DATA_HOME/tran`（未设置时使用系统默认目录）。
 
 ---
 
@@ -147,12 +145,6 @@ tran "人生苦短，我用 Rust。"
 # 强制句子翻译模式（哪怕是单个单词）
 tran -s hello
 
-# 查看最近查询历史记录
-tran --history
-
-# 仅查看已收藏的生词记录
-tran --favorites
-
 # 使用网络代理
 tran rust --proxy http://127.0.0.1:7890
 ```
@@ -192,7 +184,6 @@ xdg-open docs/index.html
 ## 🛠️ 技术栈与依赖
 
 - **网络与解析**：[reqwest](https://github.com/seanmonstar/reqwest) 0.12 (rustls-tls) + [serde](https://serde.rs/)
-- **本地持久化**：[rusqlite](https://github.com/rusqlite/rusqlite) (SQLite3 Bundled)
 - **字体与排版**：[unicode-width](https://github.com/unicode-rs/unicode-width)
 - **命令行解析**：[clap](https://github.com/clap-rs/clap) 4.5
 

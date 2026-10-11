@@ -36,20 +36,6 @@ pub enum QueryOutput {
     },
 }
 
-impl QueryOutput {
-    pub fn summary(&self) -> String {
-        match self {
-            QueryOutput::Dict(detail) => detail
-                .definitions
-                .iter()
-                .map(|definition| format!("{}{}", definition.pos, definition.meanings.join(" ")))
-                .collect::<Vec<_>>()
-                .join(" "),
-            QueryOutput::Sentence { translated, .. } => translated.clone(),
-        }
-    }
-}
-
 #[derive(Debug, Deserialize)]
 struct YoudaoResponse {
     ec: Option<YoudaoEc>,

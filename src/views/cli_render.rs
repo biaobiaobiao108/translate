@@ -2,7 +2,6 @@ use colored::*;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::api::dict::{QueryOutput, WordDetail};
-use crate::db::HistoryItem;
 use crate::views::theme::{CliTheme, Rgb, ThemeMode};
 
 pub fn render_cli_output(output: &QueryOutput, mode: ThemeMode) {
@@ -16,83 +15,6 @@ pub fn render_cli_output(output: &QueryOutput, mode: ThemeMode) {
             target_lang,
         } => render_sentence_card(original, translated, detected_lang, target_lang, &theme),
     }
-}
-
-pub fn render_history_items(items: &[HistoryItem], only_favorites: bool, mode: ThemeMode) {
-    let theme = mode.cli();
-    let title = if only_favorites {
-        "收藏生词本"
-    } else {
-        "历史查询记录"
-    };
-    let total_count = format!("共 {} 条", items.len());
-    let title_text = format!("{} · {}", title, total_count);
-
-    println!();
-    render_card_header(&title_text, theme.cyan, &theme);
-
-    if items.is_empty() {
-        let msg = "暂无记录。查询结果会自动保存在这里。";
-        let styled = color(msg, theme.muted, &theme);
-        render_content_line(&styled, str_width(msg), &theme);
-        render_card_footer(&theme);
-        println!();
-        return;
-    }
-
-    let timestamp_width = items
-        .iter()
-        .map(|item| str_width(item.created_at.as_str()))
-        .max()
-        .unwrap_or(1);
-    let iw = inner_width();
-    let query_width = if iw >= 60 {
-        24.min(iw.saturating_sub(timestamp_width + 8).max(1))
-    } else {
-        iw.saturating_mul(2)
-            .checked_div(5)
-            .unwrap_or(1)
-            .clamp(1, iw.max(1))
-    };
-    let summary_width = iw.saturating_sub(query_width + timestamp_width + 6).max(1);
-
-    for item in items {
-        let query = truncate_display_width(&single_line(&item.query), query_width);
-        let query_padding = " ".repeat(query_width.saturating_sub(str_width(query.as_str())));
-        let icon = if item.is_favorite { "★" } else { "·" };
-        let icon_color = if item.is_favorite {
-            theme.yellow
-        } else {
-            theme.muted
-        };
-        let summary_lines = wrap_display(&single_line(&item.result_summary), summary_width);
-
-        for (line_index, line) in summary_lines.iter().enumerate() {
-            if line_index == 0 {
-                let plain_line = format!(
-                    "{} {}{}  {}  {}",
-                    icon, query, query_padding, line, item.created_at
-                );
-                let styled_line = format!(
-                    "{} {}{}  {}  {}",
-                    bold_color(icon, icon_color, &theme),
-                    bold_color(&query, theme.foreground, &theme),
-                    query_padding,
-                    color(line, theme.translation, &theme),
-                    color(&item.created_at, theme.muted, &theme)
-                );
-                render_content_line(&styled_line, str_width(&plain_line), &theme);
-            } else {
-                let indent = " ".repeat(query_width + 4);
-                let plain_line = format!("{}{}", indent, line);
-                let styled_line = format!("{}{}", indent, color(line, theme.translation, &theme));
-                render_content_line(&styled_line, str_width(&plain_line), &theme);
-            }
-        }
-    }
-
-    render_card_footer(&theme);
-    println!();
 }
 
 fn render_word_card(detail: &WordDetail, theme: &CliTheme) {
@@ -382,10 +304,6 @@ fn bold_color(text: &str, color_value: Rgb, _theme: &CliTheme) -> String {
         .to_string()
 }
 
-fn single_line(text: &str) -> String {
-    text.replace(['\r', '\n'], " ")
-}
-
 fn terminal_width() -> usize {
     std::env::var("COLUMNS")
         .ok()
@@ -400,28 +318,6 @@ fn card_width() -> usize {
 
 fn inner_width() -> usize {
     card_width().saturating_sub(4).max(20)
-}
-
-fn truncate_display_width(text: &str, max_width: usize) -> String {
-    if str_width(text) <= max_width {
-        return text.to_string();
-    }
-    if max_width <= 1 {
-        return "…".to_string();
-    }
-
-    let mut result = String::new();
-    let mut width = 0;
-    for ch in text.chars() {
-        let char_width = UnicodeWidthChar::width(ch).unwrap_or(0);
-        if width + char_width > max_width - 1 {
-            break;
-        }
-        result.push(ch);
-        width += char_width;
-    }
-    result.push('…');
-    result
 }
 
 /// Wrap by terminal display width rather than byte count. This keeps CJK
@@ -481,11 +377,6 @@ mod tests {
         let lines = wrap_display("你好世界 hello", 6);
         assert!(lines.iter().all(|line| str_width(line.as_str()) <= 6));
         assert_eq!(lines.join(""), "你好世界 hello");
-    }
-
-    #[test]
-    fn truncates_by_display_width() {
-        assert_eq!(truncate_display_width("你好世界", 5), "你好…");
     }
 
     #[test]

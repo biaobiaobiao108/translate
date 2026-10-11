@@ -24,20 +24,4 @@ pub struct CliArgs {
     /// 指定网络代理 (如 http://127.0.0.1:7890 或 socks5://127.0.0.1:1080)
     #[arg(long = "proxy", help = "设置 HTTP/SOCKS5 代理地址")]
     pub proxy: Option<String>,
-
-    /// 查看查询历史记录 (CLI 模式)
-    #[arg(
-        long = "history",
-        conflicts_with = "show_favorites",
-        help = "显示最近的查询历史记录"
-    )]
-    pub show_history: bool,
-
-    /// 仅查看已收藏的生词记录
-    #[arg(
-        long = "favorites",
-        conflicts_with = "show_history",
-        help = "仅显示收藏的生词"
-    )]
-    pub show_favorites: bool,
 }

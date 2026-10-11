@@ -15,7 +15,7 @@ tran 是一个基于 Rust 开发的高性能、现代化 CLI 翻译工具，采�
   - reqwest (0.12, rustls-tls)：支持代理与系统环境检测；
   - 微软翻译接口 (Bing Translator)：智能中英互译，国内直连免翻墙；
   - 有道开放词典 JSON 接口：权威英美音标、词性分类释义、中英权威双语例句。
-- **本地存储**：rusqlite (SQLite3 bundled)，自动存储历史记录并支持读取收藏生词至 ~/.translate/history.db。
+- **运行方式**：无状态 CLI，查询结束后不写入本地数据库。
 - **文字与排版**：unicode-width 精确度量终端全角/半角字符宽度，保证 CLI 卡片换行稳定。
 
 ---
@@ -34,9 +34,6 @@ tran 是一个基于 Rust 开发的高性能、现代化 CLI 翻译工具，采�
 │   │   ├── microsoft.rs     # 微软翻译接口
 │   │   └── mod.rs
 │   ├── cli.rs               # 命令行参数解析（clap）
-│   ├── db/
-│   │   ├── history.rs       # SQLite 历史与收藏夹持久化
-│   │   └── mod.rs
 │   ├── error.rs             # 统一异常定义
 │   ├── main.rs              # 程序入口
 │   └── views/
