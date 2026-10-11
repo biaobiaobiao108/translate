@@ -10,7 +10,6 @@ const MAX_SUMMARY_CHARS: usize = 2_000;
 
 #[derive(Debug, Clone)]
 pub struct HistoryItem {
-    pub id: i64,
     pub query: String,
     pub result_summary: String,
     pub is_favorite: bool,
@@ -84,35 +83,15 @@ impl Database {
         Ok(id)
     }
 
-    pub fn toggle_favorite(&self, id: i64) -> Result<bool> {
-        let changed = self.conn.execute(
-            "UPDATE history
-             SET is_favorite = CASE is_favorite WHEN 1 THEN 0 ELSE 1 END
-             WHERE id = ?1",
-            params![id],
-        )?;
-
-        if changed == 0 {
-            return Err(AppError::NotFound(format!("历史记录 {}", id)));
-        }
-
-        let is_favorite = self.conn.query_row(
-            "SELECT is_favorite FROM history WHERE id = ?1",
-            params![id],
-            |row| row.get::<_, i32>(0),
-        )?;
-        Ok(is_favorite == 1)
-    }
-
     pub fn list_history(&self, only_favorites: bool, limit: usize) -> Result<Vec<HistoryItem>> {
         let sql = if only_favorites {
-            "SELECT id, query, result_summary, is_favorite, created_at
+            "SELECT query, result_summary, is_favorite, created_at
              FROM history
              WHERE is_favorite = 1
              ORDER BY created_at DESC, id DESC
              LIMIT ?1"
         } else {
-            "SELECT id, query, result_summary, is_favorite, created_at
+            "SELECT query, result_summary, is_favorite, created_at
              FROM history
              ORDER BY created_at DESC, id DESC
              LIMIT ?1"
@@ -121,47 +100,15 @@ impl Database {
         let mut stmt = self.conn.prepare(sql)?;
         let rows = stmt.query_map(params![limit.min(i64::MAX as usize) as i64], |row| {
             Ok(HistoryItem {
-                id: row.get(0)?,
-                query: row.get(1)?,
-                result_summary: row.get(2)?,
-                is_favorite: row.get::<_, i32>(3)? == 1,
-                created_at: row.get(4)?,
+                query: row.get(0)?,
+                result_summary: row.get(1)?,
+                is_favorite: row.get::<_, i32>(2)? == 1,
+                created_at: row.get(3)?,
             })
         })?;
 
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(Into::into)
-    }
-
-    pub fn delete_record(&self, id: i64) -> Result<()> {
-        let changed = self
-            .conn
-            .execute("DELETE FROM history WHERE id = ?1", params![id])?;
-        if changed == 0 {
-            return Err(AppError::NotFound(format!("历史记录 {}", id)));
-        }
-        Ok(())
-    }
-
-    pub fn get_config(&self, key: &str) -> Result<Option<String>> {
-        let value = self
-            .conn
-            .query_row(
-                "SELECT value FROM config WHERE key = ?1",
-                params![key],
-                |row| row.get(0),
-            )
-            .optional()?;
-        Ok(value)
-    }
-
-    pub fn set_config(&self, key: &str, value: &str) -> Result<()> {
-        self.conn.execute(
-            "INSERT INTO config (key, value) VALUES (?1, ?2)
-             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-            params![key, value],
-        )?;
-        Ok(())
     }
 
     fn prune_old_history(&self) -> Result<()> {
@@ -191,10 +138,7 @@ fn migrate(conn: &Connection) -> Result<()> {
          );
          CREATE INDEX IF NOT EXISTS idx_history_favorite_created
              ON history (is_favorite, created_at DESC, id DESC);
-         CREATE TABLE IF NOT EXISTS config (
-             key TEXT PRIMARY KEY,
-             value TEXT NOT NULL
-         );",
+         ",
     )?;
     Ok(())
 }
@@ -231,28 +175,5 @@ mod tests {
         assert_eq!(items.len(), 2);
         let hello = items.iter().find(|item| item.query == "hello").unwrap();
         assert_eq!(hello.result_summary, "您好");
-    }
-
-    #[test]
-    fn toggles_and_deletes_records() {
-        let db = Database::open(":memory:").unwrap();
-        let id = db.add_record("hello", "你好").unwrap();
-
-        assert!(db.toggle_favorite(id).unwrap());
-        assert_eq!(db.list_history(true, 10).unwrap().len(), 1);
-        db.delete_record(id).unwrap();
-        assert!(db.list_history(false, 10).unwrap().is_empty());
-    }
-
-    #[test]
-    fn config_store_and_retrieve() {
-        let db = Database::open(":memory:").unwrap();
-        assert_eq!(db.get_config("theme").unwrap(), None);
-
-        db.set_config("theme", "light").unwrap();
-        assert_eq!(db.get_config("theme").unwrap().as_deref(), Some("light"));
-
-        db.set_config("theme", "dark").unwrap();
-        assert_eq!(db.get_config("theme").unwrap().as_deref(), Some("dark"));
     }
 }

@@ -2,11 +2,10 @@ use std::fmt;
 use std::str::FromStr;
 
 use clap::ValueEnum;
-use ratatui::style::Color;
 
 pub type Rgb = (u8, u8, u8);
 
-/// Theme selection supports Auto (smart detection), Dark (Tokyo Night Night),
+/// Theme selection supports Auto (smart detection), Dark (Tokyo Night Dark),
 /// and Light (Tokyo Night Day).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, ValueEnum)]
 pub enum ThemeMode {
@@ -40,25 +39,6 @@ impl FromStr for ThemeMode {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Theme {
-    pub background: Color,
-    pub foreground: Color,
-    pub secondary: Color,
-    pub blue: Color,
-    pub cyan: Color,
-    pub green: Color,
-    pub magenta: Color,
-    pub purple: Color,
-    pub orange: Color,
-    pub yellow: Color,
-    pub red: Color,
-    pub comment: Color,
-    pub selection: Color,
-    pub border: Color,
-    pub badge_fg: Color,
-}
-
-#[derive(Debug, Clone, Copy)]
 pub struct CliTheme {
     pub foreground: Rgb,
     pub translation: Rgb,
@@ -78,45 +58,6 @@ impl ThemeMode {
         match self {
             Self::Auto => detect_terminal_theme(),
             other => other,
-        }
-    }
-
-    pub fn tui(self) -> Theme {
-        match self.resolved() {
-            Self::Auto | Self::Dark => Theme {
-                background: Color::Reset,
-                foreground: Color::Rgb(230, 237, 243),
-                secondary: Color::Rgb(192, 202, 245),
-                blue: Color::Rgb(122, 162, 247),
-                cyan: Color::Rgb(125, 207, 255),
-                green: Color::Rgb(115, 218, 202),
-                magenta: Color::Rgb(187, 154, 247),
-                purple: Color::Rgb(157, 124, 216),
-                orange: Color::Rgb(255, 158, 100),
-                yellow: Color::Rgb(224, 175, 104),
-                red: Color::Rgb(247, 118, 142),
-                comment: Color::Rgb(169, 177, 214),
-                selection: Color::Rgb(51, 65, 90),
-                border: Color::Rgb(86, 95, 137),
-                badge_fg: Color::Rgb(26, 27, 38),
-            },
-            Self::Light => Theme {
-                background: Color::Reset,
-                foreground: Color::Rgb(40, 44, 60),
-                secondary: Color::Rgb(76, 85, 120),
-                blue: Color::Rgb(36, 76, 160),
-                cyan: Color::Rgb(0, 113, 143),
-                green: Color::Rgb(22, 110, 60),
-                magenta: Color::Rgb(142, 60, 202),
-                purple: Color::Rgb(115, 60, 190),
-                orange: Color::Rgb(180, 77, 24),
-                yellow: Color::Rgb(143, 94, 21),
-                red: Color::Rgb(199, 44, 72),
-                comment: Color::Rgb(132, 142, 179),
-                selection: Color::Rgb(210, 214, 224),
-                border: Color::Rgb(160, 168, 195),
-                badge_fg: Color::Rgb(255, 255, 255),
-            },
         }
     }
 
@@ -280,15 +221,6 @@ mod tests {
         assert_eq!("light".parse::<ThemeMode>().unwrap(), ThemeMode::Light);
         assert_eq!("auto".parse::<ThemeMode>().unwrap(), ThemeMode::Auto);
         assert!("unknown".parse::<ThemeMode>().is_err());
-    }
-
-    #[test]
-    fn fixed_themes_define_distinct_palettes() {
-        let dark = ThemeMode::Dark.tui();
-        let light = ThemeMode::Light.tui();
-        assert_eq!(dark.background, Color::Reset);
-        assert_eq!(light.background, Color::Reset);
-        assert_ne!(dark.foreground, light.foreground);
     }
 
     #[test]

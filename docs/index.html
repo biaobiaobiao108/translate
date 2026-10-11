@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>translate · 现代化极速 CLI / TUI 翻译工具</title>
+  <title>translate · 现代化极速 CLI 翻译工具</title>
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -154,57 +154,11 @@
     .dot-red { background: #f7768e; }
     .dot-yellow { background: #e0af68; }
     .dot-green { background: #9ece6a; }
-    .terminal-tabs {
-      display: flex; gap: 8px; margin-left: 12px;
-    }
-    .terminal-tab-btn {
-      background: transparent; border: 1px solid transparent; color: var(--fg-sub);
-      font-family: var(--font-mono); font-size: 0.8rem; padding: 6px 14px; border-radius: 6px;
-      cursor: pointer; transition: all 0.2s ease;
-    }
-    .terminal-tab-btn:hover { color: var(--fg); }
-    .terminal-tab-btn.active {
-      background: #1a1b26; color: var(--cyan); border-color: var(--surface-border);
-      font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    }
     .terminal-title {
       flex: 1; text-align: right; font-family: var(--font-mono); font-size: 0.8rem;
       color: var(--fg-sub);
     }
     .terminal-body { padding: 24px; font-family: var(--font-mono); font-size: 0.9rem; line-height: 1.7; min-height: 320px; }
-    
-    .tui-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .tui-pane {
-      background: #1a1b26; border: 1px solid var(--cyan); border-radius: 8px; padding: 18px;
-      min-height: 250px; box-shadow: 0 0 20px rgba(125, 207, 255, 0.09);
-    }
-    .tui-pane.result-pane {
-      border-color: var(--surface-border); box-shadow: none;
-    }
-    .pane-title { font-size: 0.82rem; font-weight: 700; color: var(--cyan); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
-    .pane-title.subtle { color: var(--blue); }
-    
-    @keyframes cursor-blink {
-      0%, 49% { opacity: 1; }
-      50%, 100% { opacity: 0; }
-    }
-    .terminal-cursor {
-      display: inline-block; width: 8px; height: 16px; background: var(--cyan);
-      vertical-align: middle; margin-left: 3px; animation: cursor-blink 1s infinite;
-    }
-
-    /* Tab Transition Panels */
-    .tab-panel {
-      opacity: 0;
-      transform: translateY(6px);
-      transition: opacity 0.25s ease, transform 0.25s ease;
-      display: none;
-    }
-    .tab-panel.active {
-      display: block;
-      opacity: 1;
-      transform: translateY(0);
-    }
 
     /* Feature Grid Section */
     .features { padding: 30px 0 80px; }
@@ -663,7 +617,6 @@
       .nav-links a:not(.gh-btn) { display: none; }
       .hero { padding: 48px 0 30px; }
       .mascot-card { flex-direction: column; text-align: center; padding: 24px; gap: 20px; }
-      .tui-split { grid-template-columns: 1fr; }
       .terminal-title { display: none; }
       .quick-install-box { flex-direction: column; align-items: stretch; }
       .download-grid { grid-template-columns: 1fr; }
@@ -696,8 +649,8 @@
     <!-- Hero Section -->
     <section class="hero">
       <div class="tag-pill"><span>🚀 Rust 驱动 · 原生单一二进制即开即用</span></div>
-      <h2 class="hero-title">专为极客与开发者打造的<br /><span class="gradient-text">现代化极速 CLI / TUI 翻译工具</span></h2>
-      <p class="hero-desc">沉浸式 Tokyo Night 配色，50/50 左右等宽双栏对照编辑，毫秒级流式粘贴保护，输入法精准物理光标定位，真正开箱即用。</p>
+      <h2 class="hero-title">专为极客与开发者打造的<br /><span class="gradient-text">现代化极速 CLI 翻译工具</span></h2>
+      <p class="hero-desc">自适应终端配色，高可读词典卡片与长句翻译，原生 Rust 单一二进制，真正开箱即用。</p>
       <div class="cta-group">
         <a href="#download" class="btn-primary">下载独立单一程序</a>
         <a href="https://github.com/biaobiaobiao108/translate" target="_blank" rel="noreferrer" class="btn-secondary">查看 GitHub 源码</a>
@@ -709,7 +662,7 @@
       <img src="assets/panda.png" alt="translate panda mascot" />
       <div class="mascot-info">
         <h3>小熊猫领衔代言 · 呆萌外表，硬核内核 🐾</h3>
-        <p>translate 采用原生 Rust (Edition 2021) 编写，融合了现代终端文本渲染的最佳实践。无论是日常极速单词详尽释义，还是 50+ 行长篇大段沉浸式中英互译，都是您终端里最敏捷、舒适的生产力伙伴！</p>
+        <p>translate 采用原生 Rust (Edition 2021) 编写，融合了现代终端文本渲染的最佳实践。无论是日常极速单词详尽释义，还是长句中英互译，都是您终端里敏捷、舒适的生产力伙伴！</p>
       </div>
     </section>
 
@@ -717,36 +670,11 @@
     <section id="preview" class="terminal-window">
       <div class="terminal-header">
         <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div>
-        <div class="terminal-tabs">
-          <button class="terminal-tab-btn active" onclick="switchTab('tui')">🖥️ TUI 双栏交互模式 (tran i)</button>
-          <button class="terminal-tab-btn" onclick="switchTab('cli')">⚡ CLI 词典卡片 (tran rust)</button>
-        </div>
-        <div class="terminal-title">Tokyo Night Dual-Engine Translation</div>
+        <div class="terminal-title" style="text-align: left; margin-left: 12px;">⚡ CLI 词典卡片 · tran rust</div>
       </div>
       
       <div class="terminal-body">
-        <!-- TUI View -->
-        <div id="view-tui" class="tab-panel active">
-          <div class="tui-split">
-            <div class="tui-pane">
-              <div class="pane-title">📝 原文输入 (Enter: 翻译 | Shift+Enter: 换行)</div>
-              <p style="color: #c0caf5;">Simplicity is prerequisite for reliability.</p>
-              <p style="color: #7aa2f7; margin-top: 12px;">编写干净、高性能、可维护的代码是一种艺术。<span class="terminal-cursor"></span></p>
-            </div>
-            <div class="tui-pane result-pane">
-              <div class="pane-title subtle">📖 译文与词典对照 (微软翻译 / 有道词典)</div>
-              <div style="background: #283449; display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #bb9af7; margin-bottom: 8px;">[EN -> ZH] 微软翻译</div>
-              <p style="color: #9ece6a; font-weight: 600; line-height: 1.8;">简单是可靠的先决条件。<br />Writing clean, performant, and maintainable code is an art.</p>
-            </div>
-          </div>
-          <div style="margin-top: 16px; font-size: 0.82rem; color: #787c99; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-            <span>[原文输入] Enter: 翻译 | Shift+Enter: 换行 | Tab: 切换焦点 | Ctrl+H: 呼出生词抽屉</span>
-            <span style="color: #e0af68;">?: 帮助 | q: 退出</span>
-          </div>
-        </div>
-
-        <!-- CLI View -->
-        <div id="view-cli" class="tab-panel">
+        <div class="cli-preview">
           <div style="background: #1a1b26; border: 1px solid var(--surface-border); border-radius: 8px; padding: 20px; line-height: 1.8;">
             <div style="margin-bottom: 12px;">
               <span style="background: #283449; color: #7aa2f7; font-weight: 800; padding: 4px 12px; border-radius: 4px; font-size: 1.05rem;">  rust  </span>
@@ -780,30 +708,25 @@
           <h3>CLI 极速秒级查词</h3>
           <p>智能分流单词与长句。查词立显权威英美双音标、词性分类详尽释义与中英权威双语例句。</p>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon">🖥️</div>
-          <h3>50/50 左右对等双栏</h3>
-          <p>左右对等双栏布局，左侧输入长文，右侧同步展现对照结果，彻底摆脱传统单行输入框的遮挡与压抑。</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">📝</div>
-          <h3>工业级文本编辑</h3>
-          <p>集成 <code>tui-textarea</code> 并深度优化，支持 50+ 行长文本、平滑自动折行、全向光标漫游与跨页快速翻页。</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🚀</div>
-          <h3>毫秒级长文粘贴</h3>
-          <p>底层事件循环支持终端括号化粘贴（Bracketed Paste），粘贴海量多行大段文字无感注入，绝不误触发网络翻译。</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🎯</div>
-          <h3>输入法 (IME) 精准跟随</h3>
-          <p>动态测量全角中文字符与英文字母真实列宽，硬件物理光标与输入法候选框时刻同步在字符最右侧，杜绝下划线干扰。</p>
-        </div>
+         <div class="feature-card">
+           <div class="feature-icon">🎨</div>
+           <h3>自适应终端主题</h3>
+           <p>自动识别常见终端的明暗背景，选择对应的高对比字体颜色，也可以用 <code>--theme dark</code> 或 <code>--theme light</code> 固定主题。</p>
+         </div>
+         <div class="feature-card">
+           <div class="feature-icon">🔎</div>
+           <h3>高可读 CLI 排版</h3>
+           <p>按中英文实际显示宽度换行，词典卡片、释义、例句和译文保持清晰层级，适配窄终端与长文本。</p>
+         </div>
+         <div class="feature-card">
+           <div class="feature-icon">🌐</div>
+           <h3>代理与环境感知</h3>
+           <p>支持 HTTP / SOCKS5 代理和系统环境配置，单一原生二进制即可在 Windows、macOS 与 Linux 上运行。</p>
+         </div>
         <div class="feature-card">
           <div class="feature-icon">⭐</div>
-          <h3>本地生词本与历史抽屉</h3>
-          <p>轻量 SQLite 本地存储（<code>~/.translate/history.db</code>），支持一键收藏生词、历史回溯、条目过滤与一键重查。</p>
+          <h3>本地历史与收藏查看</h3>
+          <p>轻量 SQLite 本地存储（<code>~/.translate/history.db</code>），支持历史回溯、收藏过滤与自动去重。</p>
         </div>
       </div>
     </section>
@@ -1077,10 +1000,10 @@
                 <span class="step-num">3</span>
                 <span>在任意终端立即使用</span>
               </div>
-              <p class="step-desc">执行 <code>tran i</code> 即可进入沉浸式 50/50 TUI 对照翻译：</p>
+              <p class="step-desc">新开终端后直接查询单词或句子：</p>
               <div class="code-block">
-                <code>tran i</code>
-                <button class="copy-btn" onclick="copyText('tran i', this)">
+                <code>tran rust</code>
+                <button class="copy-btn" onclick="copyText('tran rust', this)">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                   <span>复制</span>
                 </button>
@@ -1149,25 +1072,6 @@
   </footer>
 
   <script>
-    // Tab Switching with Smooth View Transition
-    function switchTab(tab) {
-      const tuiView = document.getElementById('view-tui');
-      const cliView = document.getElementById('view-cli');
-      const btns = document.querySelectorAll('.terminal-tab-btn');
-      
-      if (tab === 'tui') {
-        tuiView.classList.add('active');
-        cliView.classList.remove('active');
-        btns[0].classList.add('active');
-        btns[1].classList.remove('active');
-      } else {
-        tuiView.classList.remove('active');
-        cliView.classList.add('active');
-        btns[0].classList.remove('active');
-        btns[1].classList.add('active');
-      }
-    }
-
     // Modern Toast Notification and Clipboard Copy
     let toastTimeout;
     function copyText(text, btnEl) {

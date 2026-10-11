@@ -2,22 +2,21 @@
 
 ## 项目简介
 
-tran 是一个基于 Rust 开发的高性能、现代化 CLI / TUI 翻译工具，采用优雅的 Tokyo Night 配色方案。
+tran 是一个基于 Rust 开发的高性能、现代化 CLI 翻译工具，采用优雅的 Tokyo Night 配色方案。
 - **CLI 模式**：极速单词详尽词典卡片查询（音标、词性、权威例句）、长句中英互译；
-- **TUI 模式**：左右等宽（50/50）双栏沉浸式对照编辑、50+ 行长文本视口跟随滚动、微秒级批量粘贴、输入法（IME）精确跟随定位、生词本与历史抽屉管理。
 
 ---
 
 ## 核心设计与技术栈
 
 - **编程语言**：Rust (Edition 2021)
-- **TUI 框架**：ratatui (0.29), crossterm (0.28), tui-textarea (0.7.0)
+- **终端渲染**：colored、unicode-width，支持自适应明暗主题与中英文显示宽度换行
 - **网络与接口**：
   - reqwest (0.12, rustls-tls)：支持代理与系统环境检测；
   - 微软翻译接口 (Bing Translator)：智能中英互译，国内直连免翻墙；
   - 有道开放词典 JSON 接口：权威英美音标、词性分类释义、中英权威双语例句。
-- **本地存储**：rusqlite (SQLite3 bundled)，自动存储历史记录与收藏生词本至 ~/.translate/history.db。
-- **文字与光标**：unicode-width 精确度量终端全角/半角字符宽度，严格同步物理硬件光标。
+- **本地存储**：rusqlite (SQLite3 bundled)，自动存储历史记录并支持读取收藏生词至 ~/.translate/history.db。
+- **文字与排版**：unicode-width 精确度量终端全角/半角字符宽度，保证 CLI 卡片换行稳定。
 
 ---
 
@@ -34,19 +33,12 @@ tran 是一个基于 Rust 开发的高性能、现代化 CLI / TUI 翻译工具�
 │   │   ├── dict.rs          # 词典查询与智能分流
 │   │   ├── microsoft.rs     # 微软翻译接口
 │   │   └── mod.rs
-│   ├── cli/
-│   │   ├── args.rs          # 命令行参数解析（clap）
-│   │   └── mod.rs
+│   ├── cli.rs               # 命令行参数解析（clap）
 │   ├── db/
 │   │   ├── history.rs       # SQLite 历史与收藏夹持久化
 │   │   └── mod.rs
 │   ├── error.rs             # 统一异常定义
 │   ├── main.rs              # 程序入口
-│   ├── tui/
-│   │   ├── app.rs           # TUI 状态机、长文折行与滚动算法
-│   │   ├── event.rs         # 异步事件循环、微秒级按键流聚合与粘贴捕获
-│   │   ├── mod.rs           # 键盘事件分发与主循环
-│   │   └── ui.rs            # Tokyo Night 双栏渲染、输入法光标锚定
 │   └── views/
 │       ├── cli_render.rs    # CLI 词典卡片与译文渲染
 │       ├── mod.rs

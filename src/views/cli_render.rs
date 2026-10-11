@@ -387,8 +387,10 @@ fn single_line(text: &str) -> String {
 }
 
 fn terminal_width() -> usize {
-    crossterm::terminal::size()
-        .map(|(width, _)| usize::from(width))
+    std::env::var("COLUMNS")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|width| *width > 0)
         .unwrap_or(80)
 }
 

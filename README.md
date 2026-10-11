@@ -1,4 +1,4 @@
-# tran · 高性能现代化 CLI / TUI 翻译工具
+# tran · 高性能现代化 CLI 翻译工具
 
 <div align="center">
   <img src="docs/assets/logo.svg" alt="tran logo" width="180" height="180" />
@@ -17,23 +17,18 @@
 
 ## 📖 项目简介
 
-**tran** 是一款基于 Rust 开发的现代化 CLI / TUI 翻译与词典工具。默认继承终端的背景与正文颜色，也支持高对比的 **Tokyo Night 深色** 和浅色主题，让查词与翻译在不同终端中保持清晰、可控。
+**tran** 是一款基于 Rust 开发的现代化 CLI 翻译与词典工具。默认根据终端环境选择高可读配色，也支持高对比的 **Tokyo Night 深色** 和浅色主题，让查词与翻译在不同终端中保持清晰、可控。
 
 - **CLI 模式**：极速毫秒级响应，单词智能分流呈现详尽权威词典卡片（英美音标、词性精释、权威中英双语例句）；长句自动调用微软智能翻译接口（Bing Translator，国内直连免代理）。
-- **TUI 模式**：根据终端尺寸自适应的双栏 / 上下布局，支持 50+ 行超长文本视口跟随滚动、微秒级批量粘贴注入保护、输入法 (IME) 物理光标精确跟随定位、本地 SQLite 生词本与历史抽屉管理。
 
 ---
 
 ## ✨ 核心特性
 
 - ⚡ **CLI 极速秒级查词**：智能分流单词与长句。查词立显权威英美双音标、词性分类详尽释义与中英权威双语例句。
-- 🎨 **自适应终端主题**：默认 `auto` 模式继承终端背景和默认正文色，也可通过 `--theme dark` 使用 Tokyo Night 深色主题，或通过 `--theme light` 使用浅色高对比主题。
-- 🖥️ **TUI 自适应沉浸对照**：宽终端使用 46/54 双栏，窄终端自动切换为上下布局；左栏多行编辑输入，右栏实时呈现翻译与释义，避免小窗口中内容挤压和溢出。
-- 🔎 **高可读终端排版**：CLI 按中英文实际显示宽度换行，TUI 使用高对比正文色、明确的模式 / 状态栏和响应式弹窗，减少不同终端字体与背景造成的阅读问题。
-- 📝 **工业级文本编辑**：基于 `tui-textarea` 深度调优，支持长文本跨行移动、平滑自动折行与全向光标漫游。
-- 🚀 **毫秒级长文粘贴保护**：底层事件循环全面支持终端括号化粘贴（Bracketed Paste），粘贴海量多行文本无感注入，绝不误触发网络请求。
-- 🎯 **输入法 (IME) 精准跟随**：通过 `unicode-width` 动态测量全角中文字符与英文字符真实列宽，硬件物理光标与系统输入法候选框时刻同步定位在字符最右侧。
-- ⭐ **本地生词本与历史抽屉**：轻量 SQLite 本地持久化，支持去重、自动保留最近记录、一键收藏、历史回溯、条目过滤与一键重查。新安装使用平台数据目录，旧版本的 `~/.translate/history.db` 会继续沿用。
+- 🎨 **自适应终端主题**：默认 `auto` 模式根据终端环境选择对应的高对比字体颜色，也可通过 `--theme dark` 使用 Tokyo Night 深色主题，或通过 `--theme light` 使用浅色高对比主题。
+- 🔎 **高可读终端排版**：CLI 按中英文实际显示宽度换行，并根据终端明暗背景选择对应高对比字体颜色，减少不同终端字体与背景造成的阅读问题。
+- ⭐ **本地历史与收藏查看**：轻量 SQLite 本地持久化，支持去重、自动保留最近记录、历史回溯与收藏过滤。新安装使用平台数据目录，旧版本的 `~/.translate/history.db` 会继续沿用。
 - 🌐 **代理与环境感知**：支持 `--proxy` 参数或自动感知系统环境变量（HTTP / SOCKS5），网络访问无缝流畅。
 
 新安装的数据目录遵循系统约定：Windows 使用 `%LOCALAPPDATA%\\tran`，macOS 使用 `~/Library/Application Support/tran`，Linux 使用 `$XDG_DATA_HOME/tran`（未设置时使用系统默认目录）。
@@ -162,67 +157,18 @@ tran --favorites
 tran rust --proxy http://127.0.0.1:7890
 ```
 
-### 2. TUI 双栏沉浸模式
-
-直接执行 `tran i` 进入自适应交互界面：
+### 2. 终端主题模式
 
 ```bash
-tran i
-```
-
-主题模式：
-
-```bash
-# 默认：继承终端背景与默认正文颜色
+# 默认：根据终端环境自动选择深色或浅色高对比配色
 tran --theme auto rust
-tran --theme auto i
 
 # 固定高对比主题
 tran --theme dark rust
-tran --theme light i
+tran --theme light rust
 ```
 
-`auto` 模式不会猜测终端是浅色还是深色，而是使用终端自己的背景和默认前景色；这是跨 Windows、macOS 和 Linux 最稳定的适配方式。
-
----
-
-## ⌨️ TUI 快捷键操作指南
-
-### 原文输入区（Input Pane）
-
-| 按键 | 说明 |
-| :--- | :--- |
-| `Enter` | 执行翻译 / 查词 |
-| `Shift + Enter` / `Ctrl + J` | 换行（支持多行排版长段落） |
-| `方向键 (↑ ↓ ← →)` | 自由漫游光标 |
-| `PageUp / PageDown` | 快速翻页 |
-| `Tab` | 在 **[原文输入区]** 与 **[译文释义区]** 之间切换焦点 |
-| `Ctrl + H` | 打开 / 关闭 生词本与历史记录抽屉 |
-| `Ctrl + C` | 退出程序 |
-
-### 译文与释义区（Result Pane）
-
-| 按键 | 说明 |
-| :--- | :--- |
-| `↑ / ↓` | 单行平滑滚动浏览长文本 |
-| `PageUp / PageDown` | 快速跨页翻页 |
-| `Home` | 一键回到顶部 |
-| `Tab` / `Esc` | 将焦点切换回输入区 |
-| `h` | 打开 / 关闭 生词本与历史记录抽屉 |
-| `?` | 打开快捷键帮助弹窗 |
-| `q` | 退出程序 |
-
-### 历史记录与生词本抽屉（History Drawer）
-
-| 按键 | 说明 |
-| :--- | :--- |
-| `↑ / ↓` | 选择历史条目 |
-| `PageUp / PageDown` | 快速翻页 |
-| `Enter` | 将选中的历史条目载入输入框并自动触发翻译 |
-| `f` | 收藏 / 取消收藏当前条目（标记生词 ⭐） |
-| `c` | 切换过滤模式（全部历史 ↔ 仅看收藏生词） |
-| `d` | 删除当前选中的历史记录 |
-| `Esc` / `h` | 关闭抽屉并返回输入区 |
+`auto` 模式会读取常见终端环境提示，并为深色或浅色背景选择对应的字体颜色；无法判断时默认使用深色终端配色。
 
 ---
 
@@ -245,8 +191,6 @@ xdg-open docs/index.html
 
 ## 🛠️ 技术栈与依赖
 
-- **TUI 界面框架**：[ratatui](https://github.com/ratatui/ratatui) 0.29 + [crossterm](https://github.com/crossterm-rs/crossterm) 0.28
-- **文本编辑器**：[tui-textarea](https://github.com/rhysd/tui-textarea) 0.7
 - **网络与解析**：[reqwest](https://github.com/seanmonstar/reqwest) 0.12 (rustls-tls) + [serde](https://serde.rs/)
 - **本地持久化**：[rusqlite](https://github.com/rusqlite/rusqlite) (SQLite3 Bundled)
 - **字体与排版**：[unicode-width](https://github.com/unicode-rs/unicode-width)
