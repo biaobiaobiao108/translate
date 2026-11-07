@@ -162,6 +162,7 @@
 
     /* Feature Grid Section */
     .features { padding: 30px 0 80px; }
+    .privacy-note { max-width: 760px; margin: 28px auto 0; color: var(--fg-sub); font-size: 0.86rem; line-height: 1.7; text-align: center; }
     .section-head { text-align: center; margin-bottom: 48px; }
     .section-head h2 { font-size: 2.2rem; font-weight: 800; color: #fff; letter-spacing: -0.5px; margin-bottom: 12px; }
     .section-head p { color: var(--fg-sub); font-size: 1.05rem; }
@@ -724,6 +725,7 @@
            <p>支持 HTTP / SOCKS5 代理和系统环境配置，单一原生二进制即可在 Windows、macOS 与 Linux 上运行。</p>
          </div>
       </div>
+      <p class="privacy-note">查询文本会发送至有道词典和微软翻译；在线功能可能受上游服务调整或限流影响，程序不会在本地保存查询历史。</p>
     </section>
 
     <!-- Download Section -->
@@ -740,9 +742,9 @@
           <span>Cargo 快捷安装</span>
         </div>
         <div class="quick-install-code">
-          <code>cargo install --git https://github.com/biaobiaobiao108/translate.git tran</code>
+          <code>cargo install --git https://github.com/biaobiaobiao108/translate.git --locked tran</code>
         </div>
-        <button class="copy-btn" onclick="copyText('cargo install --git https://github.com/biaobiaobiao108/translate.git tran', this)" title="复制命令">
+        <button class="copy-btn" onclick="copyText('cargo install --git https://github.com/biaobiaobiao108/translate.git --locked tran', this)" title="复制命令">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
           <span>复制</span>
         </button>
@@ -838,17 +840,17 @@
                 </div>
                 <div class="dl-platform-meta">
                   <h4>Debian / Ubuntu / Linux</h4>
-                  <span class="dl-arch-pill">x86_64</span>
+                  <span class="dl-arch-pill">x86_64 · musl 静态</span>
                 </div>
               </div>
               <span class="badge-direct"><span class="badge-dot"></span>单一原生可执行文件</span>
             </div>
 
             <div class="dl-file-action">
-              <a href="https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-x86_64-unknown-linux-gnu" class="dl-btn">
+              <a href="https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-x86_64-unknown-linux-musl" class="dl-btn">
                 <div class="dl-btn-content">
                   <svg class="dl-btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                  <span class="dl-btn-filename">tran-x86_64-unknown-linux-gnu</span>
+                  <span class="dl-btn-filename">tran-x86_64-unknown-linux-musl</span>
                 </div>
                 <span class="dl-btn-arrow">下载 →</span>
               </a>
@@ -857,7 +859,7 @@
 
           <div class="dl-guide-box">
             <span class="dl-guide-text">重命名安装：<code>sudo mv tran-* /usr/local/bin/tran</code></span>
-            <button class="copy-btn" onclick="copyText('chmod +x tran-x86_64-unknown-linux-gnu && sudo mv tran-x86_64-unknown-linux-gnu /usr/local/bin/tran', this)" title="复制快速上手命令">
+            <button class="copy-btn" onclick="copyText('chmod +x tran-x86_64-unknown-linux-musl && sudo mv tran-x86_64-unknown-linux-musl /usr/local/bin/tran', this)" title="复制快速上手命令">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
               <span>复制</span>
             </button>
@@ -876,17 +878,17 @@
                 </div>
                 <div class="dl-platform-meta">
                   <h4>Debian / Ubuntu / Linux</h4>
-                  <span class="dl-arch-pill">AArch64 (ARM64)</span>
+                  <span class="dl-arch-pill">AArch64 · musl 静态</span>
                 </div>
               </div>
               <span class="badge-direct"><span class="badge-dot"></span>单一原生可执行文件</span>
             </div>
 
             <div class="dl-file-action">
-              <a href="https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-aarch64-unknown-linux-gnu" class="dl-btn">
+              <a href="https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-aarch64-unknown-linux-musl" class="dl-btn">
                 <div class="dl-btn-content">
                   <svg class="dl-btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                  <span class="dl-btn-filename">tran-aarch64-unknown-linux-gnu</span>
+                  <span class="dl-btn-filename">tran-aarch64-unknown-linux-musl</span>
                 </div>
                 <span class="dl-btn-arrow">下载 →</span>
               </a>
@@ -895,7 +897,7 @@
 
           <div class="dl-guide-box">
             <span class="dl-guide-text">重命名安装：<code>sudo mv tran-* /usr/local/bin/tran</code></span>
-            <button class="copy-btn" onclick="copyText('chmod +x tran-aarch64-unknown-linux-gnu && sudo mv tran-aarch64-unknown-linux-gnu /usr/local/bin/tran', this)" title="复制快速上手命令">
+            <button class="copy-btn" onclick="copyText('chmod +x tran-aarch64-unknown-linux-musl && sudo mv tran-aarch64-unknown-linux-musl /usr/local/bin/tran', this)" title="复制快速上手命令">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
               <span>复制</span>
             </button>

@@ -101,6 +101,10 @@ pub async fn fetch_dict_detail(client: &Client, word: &str) -> Result<WordDetail
 
     let json: YoudaoResponse = resp.json().await?;
 
+    parse_youdao_response(json, word)
+}
+
+fn parse_youdao_response(json: YoudaoResponse, word: &str) -> Result<WordDetail> {
     let mut us_phone = None;
     let mut uk_phone = None;
     let mut tags = Vec::new();
@@ -177,6 +181,15 @@ pub async fn fetch_dict_detail(client: &Client, word: &str) -> Result<WordDetail
     })
 }
 
+fn is_dictionary_query(trimmed: &str, force_sentence: bool) -> bool {
+    !force_sentence
+        && trimmed.chars().count() <= 64
+        && !trimmed.chars().any(|c| c.is_whitespace())
+        && trimmed
+            .chars()
+            .all(|c| c.is_alphabetic() || matches!(c, '-' | '\'' | '’'))
+}
+
 pub async fn smart_query(
     client: &Client,
     query: &str,
@@ -187,18 +200,9 @@ pub async fn smart_query(
         return Err(AppError::InvalidInput("查询内容不能为空".to_string()));
     }
 
-    let is_dictionary_query = !force_sentence
-        && trimmed.chars().count() <= 64
-        && !trimmed.chars().any(|c| c.is_whitespace())
-        && trimmed
-            .chars()
-            .all(|c| c.is_alphabetic() || matches!(c, '-' | '\'' | '’'));
-
-    if is_dictionary_query {
-        match fetch_dict_detail(client, trimmed).await {
-            Ok(detail) => return Ok(QueryOutput::Dict(detail)),
-            Err(AppError::NotFound(_)) => {}
-            Err(error) => return Err(error),
+    if is_dictionary_query(trimmed, force_sentence) {
+        if let Ok(detail) = fetch_dict_detail(client, trimmed).await {
+            return Ok(QueryOutput::Dict(detail));
         }
     }
 
@@ -210,4 +214,61 @@ pub async fn smart_query(
         detected_lang: trans.detected_lang,
         target_lang: trans.target_lang,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn parse(value: serde_json::Value) -> Result<WordDetail> {
+        let response = serde_json::from_value::<YoudaoResponse>(value).unwrap();
+        parse_youdao_response(response, "rust")
+    }
+
+    #[test]
+    fn parses_dictionary_card_data() {
+        let detail = parse(json!({
+            "ec": {
+                "exam_type": ["CET6"],
+                "word": [{
+                    "usphone": "rʌst",
+                    "ukphone": "rʌst",
+                    "trs": [{
+                        "tr": [{
+                            "l": { "i": ["n. 锈", "v. 生锈"] }
+                        }]
+                    }]
+                }]
+            },
+            "blng_sents_part": {
+                "sentence-pair": [{
+                    "sentence": "The pipe is covered with rust.",
+                    "sentence-translation": "管子上覆盖着锈。"
+                }]
+            }
+        }))
+        .unwrap();
+
+        assert_eq!(detail.phonetic_us.as_deref(), Some("/ rʌst /"));
+        assert_eq!(detail.tags, vec!["CET6"]);
+        assert_eq!(detail.definitions.len(), 2);
+        assert_eq!(detail.definitions[0].pos, "n.");
+        assert_eq!(detail.definitions[0].meanings, vec!["锈"]);
+        assert_eq!(detail.examples[0].trans, "管子上覆盖着锈。");
+    }
+
+    #[test]
+    fn reports_missing_dictionary_entry() {
+        let error = parse(json!({ "ec": { "word": [] } })).unwrap_err();
+        assert!(matches!(error, AppError::NotFound(word) if word == "rust"));
+    }
+
+    #[test]
+    fn classifies_dictionary_queries() {
+        assert!(is_dictionary_query("rust", false));
+        assert!(is_dictionary_query("don't", false));
+        assert!(!is_dictionary_query("hello world", false));
+        assert!(!is_dictionary_query("rust", true));
+    }
 }

@@ -2,22 +2,22 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum AppError {
-    #[error("Network request failed: {0}")]
+    #[error("网络请求失败: {0}")]
     Network(#[from] reqwest::Error),
 
-    #[error("JSON parsing error: {0}")]
+    #[error("响应解析失败: {0}")]
     Json(#[from] serde_json::Error),
 
-    #[error("IO error: {0}")]
+    #[error("输入输出错误: {0}")]
     Io(#[from] std::io::Error),
 
-    #[error("Input error: {0}")]
+    #[error("输入错误: {0}")]
     InvalidInput(String),
 
-    #[error("Dictionary entry not found: {0}")]
+    #[error("未找到词典条目: {0}")]
     NotFound(String),
 
-    #[error("Remote response error: {0}")]
+    #[error("远端响应错误: {0}")]
     Protocol(String),
 }
 

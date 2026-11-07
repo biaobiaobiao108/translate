@@ -155,7 +155,8 @@ fn detect_windows_terminal_theme() -> Option<ThemeMode> {
 
     for path in candidate_paths {
         if let Ok(content) = std::fs::read_to_string(&path) {
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+            let content = content.trim_start_matches('\u{feff}');
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(content) {
                 // If user configured root theme as "light" or "dark"
                 if let Some(theme_str) = json.get("theme").and_then(|v| v.as_str()) {
                     if theme_str.eq_ignore_ascii_case("light") {
@@ -227,5 +228,13 @@ mod tests {
     fn auto_theme_resolves_to_valid_theme() {
         let resolved = ThemeMode::Auto.resolved();
         assert!(resolved == ThemeMode::Dark || resolved == ThemeMode::Light);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn detects_light_and_dark_hex_colors() {
+        assert!(is_hex_color_light("#F8F8F2"));
+        assert!(!is_hex_color_light("#0C0C0C"));
+        assert!(!is_hex_color_light("invalid"));
     }
 }

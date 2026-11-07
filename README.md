@@ -19,7 +19,7 @@
 
 **tran** 是一款基于 Rust 开发的现代化 CLI 翻译与词典工具。默认根据终端环境选择高可读配色，也支持高对比的 **Tokyo Night 深色** 和浅色主题，让查词与翻译在不同终端中保持清晰、可控。
 
-- **CLI 模式**：极速毫秒级响应，单词智能分流呈现详尽权威词典卡片（英美音标、词性精释、权威中英双语例句）；长句自动调用微软智能翻译接口（Bing Translator，国内直连免代理）。
+- **CLI 模式**：网络正常时快速响应，单词智能分流呈现详尽权威词典卡片（英美音标、词性精释、权威中英双语例句）；长句自动调用微软智能翻译接口（Bing Translator，国内直连免代理）。
 
 ---
 
@@ -30,6 +30,8 @@
 - 🔎 **高可读终端排版**：CLI 按中英文实际显示宽度换行，并根据终端明暗背景选择对应高对比字体颜色，减少不同终端字体与背景造成的阅读问题。
 - 🧩 **无状态 CLI 工作流**：查询结束后不写入本地数据库，不产生额外数据目录，适合临时查询和脚本调用。
 - 🌐 **代理与环境感知**：支持 `--proxy` 参数或自动感知系统环境变量（HTTP / SOCKS5），网络访问无缝流畅。
+- 🔐 **数据边界**：查询文本会发送至有道词典和微软翻译；程序仅在本次进程内处理结果，不在本地保存查询历史。
+- 🛠️ **服务依赖**：在线结果来自第三方接口；若上游服务调整、限流或暂时不可用，相关查询可能失败。
 
 ---
 
@@ -43,8 +45,8 @@
 | :--- | :--- | :--- |
 | **Windows 10 / 11 (x86_64)** | [tran-x86_64-pc-windows-msvc.exe](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-x86_64-pc-windows-msvc.exe) | 下载后重命名为 `tran.exe` 并配置 PATH |
 | **macOS (Apple Silicon M1~M4)** | [tran-aarch64-apple-darwin](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-aarch64-apple-darwin) | 重命名为 `tran` 并移入 `/usr/local/bin` |
-| **Linux (Debian / Ubuntu / CentOS x86_64)** | [tran-x86_64-unknown-linux-gnu](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-x86_64-unknown-linux-gnu) | 重命名为 `tran` 并移入 `/usr/local/bin` |
-| **Linux (ARM64 / aarch64)** | [tran-aarch64-unknown-linux-gnu](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-aarch64-unknown-linux-gnu) | 重命名为 `tran` 并移入 `/usr/local/bin` |
+| **Linux x86_64（静态链接）** | [tran-x86_64-unknown-linux-musl](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-x86_64-unknown-linux-musl) | 适用于主流 x86_64 发行版，重命名为 `tran` 并移入 `/usr/local/bin` |
+| **Linux ARM64 / aarch64（静态链接）** | [tran-aarch64-unknown-linux-musl](https://github.com/biaobiaobiao108/translate/releases/latest/download/tran-aarch64-unknown-linux-musl) | 适用于主流 ARM64 发行版，重命名为 `tran` 并移入 `/usr/local/bin` |
 
 > 提示：也可以前往 [Releases 页面](https://github.com/biaobiaobiao108/translate/releases) 查看所有历史版本与发布产物。
 
@@ -105,7 +107,7 @@ tran rust
 如果你本地已安装 Rust 开发环境，可直接通过 `cargo` 从 GitHub 仓库一键安装：
 
 ```bash
-cargo install --git https://github.com/biaobiaobiao108/translate.git tran
+cargo install --git https://github.com/biaobiaobiao108/translate.git --locked tran
 ```
 该命令会自动编译并将二进制安装到 `~/.cargo/bin/tran`，无需手动配置 PATH，开箱即用。
 
@@ -146,7 +148,7 @@ tran "人生苦短，我用 Rust。"
 tran -s hello
 
 # 使用网络代理
-tran rust --proxy http://127.0.0.1:7890
+tran --proxy http://127.0.0.1:7890 rust
 ```
 
 ### 2. 终端主题模式

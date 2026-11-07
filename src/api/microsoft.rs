@@ -1,13 +1,12 @@
-use std::sync::RwLock;
-use std::time::{Duration, Instant};
-
-use reqwest::Client;
+use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::error::{AppError, Result};
+use crate::text::{sanitize_terminal_text, truncate_chars};
 
 const MAX_QUERY_CHARS: usize = 10_000;
+const MAX_ERROR_BODY_CHARS: usize = 300;
 const USER_AGENT: &str =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
@@ -19,16 +18,13 @@ pub struct TranslationResult {
     pub target_lang: String,
 }
 
-#[derive(Clone)]
 struct BingAuth {
     ig: String,
     iid: String,
     key: String,
     token: String,
-    cached_at: Instant,
+    origin: &'static str,
 }
-
-static BING_AUTH: RwLock<Option<BingAuth>> = RwLock::new(None);
 
 pub fn detect_target_lang(text: &str) -> (&'static str, &'static str) {
     let has_cjk = text.chars().any(|c| {
@@ -67,15 +63,13 @@ fn normalize_lang_code(code: &str) -> &str {
 }
 
 async fn fetch_bing_auth(client: &Client) -> Result<BingAuth> {
-    let endpoints = [
-        "https://cn.bing.com/translator",
-        "https://www.bing.com/translator",
-    ];
+    let origins = ["https://cn.bing.com", "https://www.bing.com"];
     let mut last_error = None;
 
-    for url in endpoints {
+    for origin in origins {
+        let url = format!("{origin}/translator");
         let resp = match client
-            .get(url)
+            .get(&url)
             .header("User-Agent", USER_AGENT)
             .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
             .send()
@@ -83,26 +77,40 @@ async fn fetch_bing_auth(client: &Client) -> Result<BingAuth> {
         {
             Ok(r) => r,
             Err(e) => {
-                last_error = Some(e);
+                last_error = Some(AppError::Network(e));
                 continue;
             }
         };
 
-        if let Ok(html) = resp.text().await {
-            if let Some(auth) = parse_bing_html_auth(&html) {
-                return Ok(auth);
+        let status = resp.status();
+        let html = match resp.text().await {
+            Ok(html) => html,
+            Err(error) => {
+                last_error = Some(AppError::Network(error));
+                continue;
             }
+        };
+
+        if !status.is_success() {
+            last_error = Some(AppError::Protocol(format!(
+                "微软翻译认证页返回状态码: {status}"
+            )));
+            continue;
         }
+
+        if let Some(auth) = parse_bing_html_auth(&html, origin) {
+            return Ok(auth);
+        }
+
+        last_error = Some(AppError::Protocol(format!(
+            "无法从 {url} 解析微软翻译验证凭证"
+        )));
     }
 
-    if let Some(err) = last_error {
-        Err(AppError::Network(err))
-    } else {
-        Err(AppError::Protocol("无法获取微软翻译验证凭证".to_string()))
-    }
+    Err(last_error.unwrap_or_else(|| AppError::Protocol("无法获取微软翻译验证凭证".to_string())))
 }
 
-fn parse_bing_html_auth(html: &str) -> Option<BingAuth> {
+fn parse_bing_html_auth(html: &str, origin: &'static str) -> Option<BingAuth> {
     // 1. Extract IG (supports IG:"...", IG="...", or _IG="...")
     let ig = if let Some(idx) = html.find("IG:\"") {
         let start = idx + 4;
@@ -154,26 +162,8 @@ fn parse_bing_html_auth(html: &str) -> Option<BingAuth> {
         iid,
         key,
         token,
-        cached_at: Instant::now(),
+        origin,
     })
-}
-
-async fn get_or_refresh_auth(client: &Client, force_refresh: bool) -> Result<BingAuth> {
-    if !force_refresh {
-        if let Ok(guard) = BING_AUTH.read() {
-            if let Some(ref auth) = *guard {
-                if auth.cached_at.elapsed() < Duration::from_secs(1800) {
-                    return Ok(auth.clone());
-                }
-            }
-        }
-    }
-
-    let fresh = fetch_bing_auth(client).await?;
-    if let Ok(mut guard) = BING_AUTH.write() {
-        *guard = Some(fresh.clone());
-    }
-    Ok(fresh)
 }
 
 fn parse_bing_response(value: &Value) -> Result<(String, String)> {
@@ -203,14 +193,37 @@ fn parse_bing_response(value: &Value) -> Result<(String, String)> {
 
     if let Some(error_msg) = value.get("errorMessage").and_then(Value::as_str) {
         if !error_msg.is_empty() {
+            let safe_message =
+                truncate_chars(&sanitize_terminal_text(error_msg), MAX_ERROR_BODY_CHARS);
             return Err(AppError::Protocol(format!(
                 "微软翻译服务错误: {}",
-                error_msg
+                safe_message
             )));
         }
     }
 
     Err(AppError::Protocol("未能解析到有效微软翻译结果".to_string()))
+}
+
+fn is_auth_failure(status: StatusCode, value: Option<&Value>) -> bool {
+    if matches!(status.as_u16(), 400 | 401 | 403) {
+        return true;
+    }
+
+    value
+        .and_then(|json| json.get("statusCode"))
+        .and_then(Value::as_i64)
+        .is_some_and(|code| matches!(code, 400 | 401 | 403))
+}
+
+fn request_error(status: StatusCode, body: &str) -> String {
+    let safe_body = sanitize_terminal_text(body);
+    let excerpt = truncate_chars(safe_body.trim(), MAX_ERROR_BODY_CHARS);
+    if excerpt.is_empty() {
+        format!("微软翻译请求失败 (状态码: {status})")
+    } else {
+        format!("微软翻译请求失败 (状态码: {status}): {excerpt}")
+    }
 }
 
 pub async fn translate_text(
@@ -234,13 +247,13 @@ pub async fn translate_text(
     let sl = normalize_lang_code(sl.unwrap_or(default_sl));
     let tl = normalize_lang_code(tl.unwrap_or(default_tl));
 
-    // Try first with cached auth, and retry once with fresh auth if 400 occurs
+    // Bing 的页面 token 会过期；认证类失败时重新获取一次凭证再试。
     let mut retry_done = false;
     loop {
-        let auth = get_or_refresh_auth(client, retry_done).await?;
+        let auth = fetch_bing_auth(client).await?;
         let url = format!(
-            "https://cn.bing.com/ttranslatev3?isVertical=1&IG={}&IID={}",
-            auth.ig, auth.iid
+            "{}/ttranslatev3?isVertical=1&IG={}&IID={}",
+            auth.origin, auth.ig, auth.iid
         );
 
         let form_params = [
@@ -255,42 +268,34 @@ pub async fn translate_text(
             .post(&url)
             .header("User-Agent", USER_AGENT)
             .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
-            .header("Referer", "https://cn.bing.com/translator")
+            .header("Referer", format!("{}/translator", auth.origin))
             .form(&form_params)
             .send()
             .await?;
 
         let status = response.status();
-        let body_text = response.text().await.unwrap_or_default();
+        let body_text = response.text().await?;
+        let json_value = serde_json::from_str::<Value>(&body_text).ok();
 
-        if status.is_success() {
-            if let Ok(json_value) = serde_json::from_str::<Value>(&body_text) {
-                // If Bing returned error code (e.g. 400 token expired)
-                if json_value.get("statusCode").and_then(Value::as_i64) == Some(400) && !retry_done
-                {
-                    retry_done = true;
-                    continue;
-                }
-
-                let (translated, detected_lang) = parse_bing_response(&json_value)?;
-                return Ok(TranslationResult {
-                    original: trimmed.to_string(),
-                    translated,
-                    detected_lang,
-                    target_lang: tl.to_string(),
-                });
-            }
-        }
-
-        if !retry_done {
+        if !retry_done && is_auth_failure(status, json_value.as_ref()) {
             retry_done = true;
             continue;
         }
 
-        return Err(AppError::Protocol(format!(
-            "微软翻译请求失败 (状态码: {}): {}",
-            status, body_text
-        )));
+        if status.is_success() {
+            let json_value = json_value.ok_or_else(|| {
+                AppError::Protocol(format!("微软翻译返回了无法解析的响应 (状态码: {status})"))
+            })?;
+            let (translated, detected_lang) = parse_bing_response(&json_value)?;
+            return Ok(TranslationResult {
+                original: trimmed.to_string(),
+                translated,
+                detected_lang,
+                target_lang: tl.to_string(),
+            });
+        }
+
+        return Err(AppError::Protocol(request_error(status, &body_text)));
     }
 }
 
@@ -316,6 +321,13 @@ mod tests {
     }
 
     #[test]
+    fn sanitizes_bing_error_message() {
+        let value = json!({ "errorMessage": "bad\u{1b}[31m request" });
+        let error = parse_bing_response(&value).unwrap_err();
+        assert!(!error.to_string().contains('\u{1b}'));
+    }
+
+    #[test]
     fn detects_cjk_target_language() {
         assert_eq!(detect_target_lang("你好"), ("auto-detect", "en"));
         assert_eq!(detect_target_lang("hello"), ("auto-detect", "zh-Hans"));
@@ -332,10 +344,42 @@ mod tests {
             var params_AbusePreventionHelper = [1790167341344,"test_token_abc_123",3600000];
             </script>
         "#;
-        let auth = parse_bing_html_auth(sample_html).unwrap();
+        let auth = parse_bing_html_auth(sample_html, "https://cn.bing.com").unwrap();
         assert_eq!(auth.ig, "1A942AFD4BE84E8D9E1256A02397720D");
         assert_eq!(auth.iid, "translator.5023");
         assert_eq!(auth.key, "1790167341344");
         assert_eq!(auth.token, "test_token_abc_123");
+        assert_eq!(auth.origin, "https://cn.bing.com");
+    }
+
+    #[test]
+    fn parses_colon_style_auth() {
+        let sample_html = r#"
+            <script>var IG:"ABC123"</script>
+            <script>var params_AbusePreventionHelper = [123, "token", 3600000];</script>
+        "#;
+        let auth = parse_bing_html_auth(sample_html, "https://www.bing.com").unwrap();
+        assert_eq!(auth.ig, "ABC123");
+        assert_eq!(auth.origin, "https://www.bing.com");
+    }
+
+    #[test]
+    fn recognizes_auth_failures() {
+        assert!(is_auth_failure(StatusCode::BAD_REQUEST, None));
+        assert!(!is_auth_failure(StatusCode::TOO_MANY_REQUESTS, None));
+        assert!(is_auth_failure(
+            StatusCode::OK,
+            Some(&json!({ "statusCode": 403 }))
+        ));
+    }
+
+    #[test]
+    fn request_error_is_sanitized_and_bounded() {
+        let message = request_error(
+            StatusCode::BAD_GATEWAY,
+            &format!("\u{1b}[31m{}", "x".repeat(500)),
+        );
+        assert!(!message.contains('\u{1b}'));
+        assert!(message.chars().count() < 400);
     }
 }
